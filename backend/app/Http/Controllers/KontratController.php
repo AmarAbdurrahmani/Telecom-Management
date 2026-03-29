@@ -1,0 +1,124 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Kontrate;
+use App\Models\Client;
+use App\Models\Paket;
+use Illuminate\Http\Request;
+
+class KontratController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Kontrate::with(['klient', 'paket']);
+
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('numri_kontrates', 'like', "%$s%")
+                  ->orWhereHas('klient', fn($k) =>
+                      $k->where('emri', 'like', "%$s%")
+                        ->orWhere('mbiemri', 'like', "%$s%")
+                        ->orWhere('email', 'like', "%$s%")
+                  );
+            });
+        }
+
+        if ($request->filled('statusi')) {
+            $query->where('statusi', $request->statusi);
+        }
+
+        if ($request->filled('klient_id')) {
+            $query->where('klient_id', $request->klient_id);
+        }
+
+        if ($request->filled('paket_id')) {
+            $query->where('paket_id', $request->paket_id);
+        }
+
+        $perPage   = (int) $request->get('per_page', 12);
+        $paginator = $query->orderBy('kontrate_id', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'data' => $paginator->items(),
+            'pagination' => [
+                'total'        => $paginator->total(),
+                'per_page'     => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'from'         => $paginator->firstItem(),
+                'to'           => $paginator->lastItem(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'numri_kontrates' => 'required|string|max:50|unique:kontratat,numri_kontrates',
+            'klient_id'       => 'required|exists:clients,klient_id',
+            'paket_id'        => 'required|exists:paketat,paket_id',
+            'data_fillimit'   => 'required|date',
+            'data_mbarimit'   => 'nullable|date|after:data_fillimit',
+            'statusi'         => 'required|in:aktive,e_skaduar,anulluar',
+        ]);
+
+        $kontrate = Kontrate::create($validated);
+        $kontrate->load(['klient', 'paket']);
+
+        return response()->json($kontrate, 201);
+    }
+
+    public function show($id)
+    {
+        return response()->json(
+            Kontrate::with(['klient', 'paket'])->findOrFail($id)
+        );
+    }
+
+    public function update(Request $request, $id)
+    {
+        $kontrate = Kontrate::findOrFail($id);
+
+        $validated = $request->validate([
+            'numri_kontrates' => 'sometimes|required|string|max:50|unique:kontratat,numri_kontrates,' . $id . ',kontrate_id',
+            'klient_id'       => 'sometimes|required|exists:clients,klient_id',
+            'paket_id'        => 'sometimes|required|exists:paketat,paket_id',
+            'data_fillimit'   => 'sometimes|required|date',
+            'data_mbarimit'   => 'nullable|date|after:data_fillimit',
+            'statusi'         => 'sometimes|required|in:aktive,e_skaduar,anulluar',
+        ]);
+
+        $kontrate->update($validated);
+        $kontrate->load(['klient', 'paket']);
+
+        return response()->json($kontrate);
+    }
+
+    public function destroy($id)
+    {
+        Kontrate::findOrFail($id)->delete();
+        return response()->json(['message' => 'Kontrata u fshi me sukses.']);
+    }
+
+    // Return minimal lists for dropdowns (no pagination needed)
+    public function klientetList()
+    {
+        return response()->json(
+            Client::select('klient_id', 'emri', 'mbiemri', 'email')
+                  ->orderBy('emri')
+                  ->get()
+        );
+    }
+
+    public function paketaList()
+    {
+        return response()->json(
+            Paket::select('paket_id', 'emri_paketes', 'cmimi_mujor', 'lloji_sherbimit')
+                 ->where('aktive', true)
+                 ->orderBy('emri_paketes')
+                 ->get()
+        );
+    }
+}
