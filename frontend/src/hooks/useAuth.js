@@ -4,6 +4,10 @@ import toast from 'react-hot-toast';
 import { authApi } from '../api/authApi.js';
 import { useAuthStore } from '../store/authStore.js';
 
+function homeForRole(roli) {
+  return roli === 'klient' ? '/portal' : '/dashboard';
+}
+
 export function useAuth() {
   const { accessToken, user, isAuthenticated, isInitialized, setAuth, clearAuth } =
     useAuthStore();
@@ -14,7 +18,7 @@ export function useAuth() {
       const { data } = await authApi.login({ email, password });
       setAuth(data.data.access_token, data.data.user);
       toast.success(`Mirësevini, ${data.data.user.name}!`);
-      navigate('/dashboard');
+      navigate(homeForRole(data.data.user.roli));
     },
     [setAuth, navigate]
   );
@@ -37,5 +41,6 @@ export function useAuth() {
     isInitialized,
     login,
     logout,
+    homeForRole,
   };
 }

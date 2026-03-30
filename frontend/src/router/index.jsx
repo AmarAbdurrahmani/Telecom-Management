@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import AppLayout from '../components/Layout/AppLayout.jsx';
+import PortalLayout from '../components/Layout/PortalLayout.jsx';
 import LoginPage from '../features/auth/LoginPage.jsx';
 import DashboardPage from '../pages/DashboardPage.jsx';
 import KlientetPage from '../features/klientet/KlientetPage.jsx';
@@ -8,6 +9,10 @@ import PaketaPage from '../features/paketat/PaketaPage.jsx';
 import KontratatPage from '../features/kontratat/KontratatPage.jsx';
 import FaturatPage from '../features/faturat/FaturatPage.jsx';
 import NumratPage from '../features/numrat/NumratPage.jsx';
+import SherbimetPage from '../features/sherbimet/SherbimetPage.jsx';
+import KlientDetajet from '../features/klientet/KlientDetajet.jsx';
+import UsersPage from '../features/users/UsersPage.jsx';
+import KlientPortalPage from '../features/portal/KlientPortalPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
 function FullPageSpinner() {
@@ -18,19 +23,28 @@ function FullPageSpinner() {
   );
 }
 
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+// Redirect authenticated users to the right home based on role
+function ProtectedRoute({ children, allowedRoles }) {
+  const { isAuthenticated, isInitialized, user } = useAuthStore();
   if (!isInitialized) return <FullPageSpinner />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (allowedRoles && user && !allowedRoles.includes(user.roli)) {
+    // Wrong role — send them to their own home
+    return <Navigate to={user.roli === 'klient' ? '/portal' : '/dashboard'} replace />;
+  }
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const { isAuthenticated, isInitialized, user } = useAuthStore();
   if (!isInitialized) return <FullPageSpinner />;
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) {
+    return <Navigate to={user?.roli === 'klient' ? '/portal' : '/dashboard'} replace />;
+  }
   return children;
 }
+
+const STAFF_ROLES = ['admin', 'tl', 'sv', 'agent'];
 
 export default function AppRouter() {
   return (
@@ -41,18 +55,37 @@ export default function AppRouter() {
         element={<PublicRoute><LoginPage /></PublicRoute>}
       />
 
-      {/* Protected — nested under AppLayout (sidebar + navbar) */}
+      {/* ── Staff panel (admin, tl, sv, agent) ── */}
       <Route
         path="/"
-        element={<ProtectedRoute><AppLayout /></ProtectedRoute>}
+        element={
+          <ProtectedRoute allowedRoles={STAFF_ROLES}>
+            <AppLayout />
+          </ProtectedRoute>
+        }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="klientet"  element={<KlientetPage />} />
-        <Route path="paketat"   element={<PaketaPage />} />
-        <Route path="kontratat" element={<KontratatPage />} />
-        <Route path="faturat"          element={<FaturatPage />} />
-        <Route path="numrat-telefonit" element={<NumratPage />} />
+        <Route path="dashboard"           element={<DashboardPage />} />
+        <Route path="klientet"            element={<KlientetPage />} />
+        <Route path="klientet/:id"        element={<KlientDetajet />} />
+        <Route path="paketat"             element={<PaketaPage />} />
+        <Route path="kontratat"           element={<KontratatPage />} />
+        <Route path="faturat"             element={<FaturatPage />} />
+        <Route path="numrat-telefonit"    element={<NumratPage />} />
+        <Route path="sherbimet-shtesa"    element={<SherbimetPage />} />
+        <Route path="users"               element={<UsersPage />} />
+      </Route>
+
+      {/* ── Klient portal ── */}
+      <Route
+        path="/portal"
+        element={
+          <ProtectedRoute allowedRoles={['klient']}>
+            <PortalLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<KlientPortalPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

@@ -1,35 +1,28 @@
+import { useNavigate } from 'react-router-dom';
 import Badge from '../../components/ui/Badge.jsx';
+import ClientAvatar from '../../components/ui/ClientAvatar.jsx';
 
-/**
- * Card component matching the design spec:
- * - Initials circle
- * - Bold black name + personal number
- * - Status dot badge (no emoji)
- * - lloji_klientit + data_regjistrimit stats
- * - Edit / Delete actions
- */
+function fmt(d) {
+  return d ? new Date(d).toLocaleDateString('sq-AL', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+}
+
 export default function KlientCard({ klient, onEdit, onDelete }) {
-  const initials = `${klient.emri.charAt(0)}${klient.mbiemri.charAt(0)}`.toUpperCase();
+  const navigate = useNavigate();
 
-  const formattedDate = klient.data_regjistrimit
-    ? new Date(klient.data_regjistrimit).toLocaleDateString('sq-AL', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-    : '—';
+  const hasPortal = !!klient.user;
+  const portalActive = klient.user?.aktiv;
 
   return (
-    <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
+    <div
+      className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
+      onClick={() => navigate(`/klientet/${klient.klient_id}`)}
+    >
       {/* Header */}
       <div className="flex justify-between items-start mb-5">
         <div className="flex items-center gap-3">
-          {/* Initials circle */}
-          <div className="w-11 h-11 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-black text-sm flex-shrink-0">
-            {initials}
-          </div>
+          <ClientAvatar lloji={klient.lloji_klientit} size="md" />
           <div>
-            <h3 className="text-[15px] font-black text-slate-900 leading-tight">
+            <h3 className="text-[15px] font-black text-[#111827] leading-tight">
               {klient.emri} {klient.mbiemri}
             </h3>
             <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
@@ -37,12 +30,10 @@ export default function KlientCard({ klient, onEdit, onDelete }) {
             </span>
           </div>
         </div>
-
-        {/* Status badge */}
         <Badge value={klient.statusi} />
       </div>
 
-      {/* Contact info */}
+      {/* Contact */}
       <div className="space-y-1.5 mb-5">
         <div className="flex items-center gap-2 text-slate-500">
           <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -59,22 +50,31 @@ export default function KlientCard({ klient, onEdit, onDelete }) {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 border-t border-slate-50 pt-4">
+      <div className="grid grid-cols-3 gap-2 border-t border-slate-50 pt-4">
         <div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Lloji</p>
           <Badge value={klient.lloji_klientit} />
         </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Portal</p>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${
+            !hasPortal ? 'text-slate-400' : portalActive ? 'text-violet-700' : 'text-slate-400'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${!hasPortal ? 'bg-slate-300' : portalActive ? 'bg-violet-500' : 'bg-slate-300'}`} />
+            {!hasPortal ? 'Pa llogari' : portalActive ? 'Aktiv' : 'Joaktiv'}
+          </span>
+        </div>
         <div className="text-right">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Regjistruar</p>
-          <p className="text-[13px] font-black text-slate-800">{formattedDate}</p>
+          <p className="text-[12px] font-black text-slate-800">{fmt(klient.data_regjistrimit)}</p>
         </div>
       </div>
 
-      {/* Actions — appear on hover */}
+      {/* Actions */}
       <div className="flex gap-2 mt-4 pt-4 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={() => onEdit(klient)}
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl py-2 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onEdit(klient); }}
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 hover:text-violet-700 bg-slate-50 hover:bg-violet-50 rounded-xl py-2 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -82,7 +82,7 @@ export default function KlientCard({ klient, onEdit, onDelete }) {
           Ndrysho
         </button>
         <button
-          onClick={() => onDelete(klient)}
+          onClick={(e) => { e.stopPropagation(); onDelete(klient); }}
           className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-xl py-2 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,80 +1,73 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { klientetApi } from '../../api/klientetApi.js';
-import KlientCard from './KlientCard.jsx';
-import KlientForm from './KlientForm.jsx';
+import { sherbimetShtesaApi } from '../../api/sherbimetShtesaApi.js';
+import SherbimCard from './SherbimCard.jsx';
+import SherbimForm from './SherbimForm.jsx';
+import SyncModal from './SyncModal.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 
-const LLOJET_OPTIONS   = ['', 'individual', 'biznes', 'vip'];
-const STATUSET_OPTIONS = ['', 'aktiv', 'pasiv', 'pezulluar'];
-
-export default function KlientetPage() {
+export default function SherbimetPage() {
   const queryClient = useQueryClient();
 
-  // ---- Filters & pagination ----
   const [filters, setFilters] = useState({
-    search:          '',
-    lloji_klientit:  '',
-    statusi:         '',
-    page:            1,
-    per_page:        12,
+    search:   '',
+    aktiv:    '',
+    page:     1,
+    per_page: 12,
   });
 
-  // ---- Modal state ----
-  const [formOpen, setFormOpen]           = useState(false);
-  const [editingKlient, setEditingKlient] = useState(null);
-  const [deleteTarget, setDeleteTarget]   = useState(null);
+  const [formOpen, setFormOpen]             = useState(false);
+  const [editingSherbim, setEditingSherbim] = useState(null);
+  const [deleteTarget, setDeleteTarget]     = useState(null);
+  const [syncTarget, setSyncTarget]         = useState(null);
 
-  // ---- Query ----
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['klientet', filters],
-    queryFn:  () => klientetApi.getAll(filters).then((r) => r.data),
+    queryKey: ['sherbimet-shtesa', filters],
+    queryFn:  () => sherbimetShtesaApi.getAll(filters).then((r) => r.data),
     keepPreviousData: true,
   });
 
-  const klientet  = data?.data        ?? [];
+  const sherbimet  = data?.data       ?? [];
   const pagination = data?.pagination ?? null;
 
-  // ---- Mutations ----
   const createMutation = useMutation({
-    mutationFn: (payload) => klientetApi.create(payload),
+    mutationFn: (payload) => sherbimetShtesaApi.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['klientet'] });
-      toast.success('Klienti u krijua me sukses.');
+      queryClient.invalidateQueries({ queryKey: ['sherbimet-shtesa'] });
+      toast.success('Shërbimi u krijua me sukses.');
       setFormOpen(false);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }) => klientetApi.update(id, payload),
+    mutationFn: ({ id, payload }) => sherbimetShtesaApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['klientet'] });
-      toast.success('Klienti u përditësua me sukses.');
+      queryClient.invalidateQueries({ queryKey: ['sherbimet-shtesa'] });
+      toast.success('Shërbimi u përditësua me sukses.');
       setFormOpen(false);
-      setEditingKlient(null);
+      setEditingSherbim(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => klientetApi.delete(id),
+    mutationFn: (id) => sherbimetShtesaApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['klientet'] });
-      toast.success('Klienti u fshi me sukses.');
+      queryClient.invalidateQueries({ queryKey: ['sherbimet-shtesa'] });
+      toast.success('Shërbimi u fshi me sukses.');
       setDeleteTarget(null);
     },
   });
 
-  // ---- Handlers ----
-  const openCreate = () => { setEditingKlient(null); setFormOpen(true); };
-  const openEdit   = (k)  => { setEditingKlient(k);  setFormOpen(true); };
-  const closeForm  = ()   => { setFormOpen(false); setEditingKlient(null); };
+  const openCreate = () => { setEditingSherbim(null); setFormOpen(true); };
+  const openEdit   = (s) => { setEditingSherbim(s);   setFormOpen(true); };
+  const closeForm  = ()  => { setFormOpen(false); setEditingSherbim(null); };
 
   const handleFormSubmit = async (formData) => {
-    if (editingKlient) {
-      await updateMutation.mutateAsync({ id: editingKlient.klient_id, payload: formData });
+    if (editingSherbim) {
+      await updateMutation.mutateAsync({ id: editingSherbim.sherbim_id, payload: formData });
     } else {
       await createMutation.mutateAsync(formData);
     }
@@ -87,63 +80,47 @@ export default function KlientetPage() {
 
   return (
     <div>
-      {/* Page header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Klientët</h1>
+          <h1 className="text-2xl font-black text-slate-900">Shërbimet Shtesë</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {pagination?.total != null ? `${pagination.total} klientë gjithsej` : 'Menaxho bazën e klientëve'}
+            {pagination?.total != null ? `${pagination.total} shërbime gjithsej` : 'Menaxho shërbimet shtesë'}
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="inline-flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          Klient i ri
+          Shërbim i ri
         </button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="text"
-            placeholder="Kërko emër, email, numër personal..."
+            placeholder="Kërko emër shërbimi..."
             value={filters.search}
             onChange={(e) => handleFilterChange('search', e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-700 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
           />
         </div>
-
-        {/* Lloji filter */}
         <select
-          value={filters.lloji_klientit}
-          onChange={(e) => handleFilterChange('lloji_klientit', e.target.value)}
-          className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-700 focus:border-transparent bg-white"
+          value={filters.aktiv}
+          onChange={(e) => handleFilterChange('aktiv', e.target.value)}
+          className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent bg-white"
         >
-          <option value="">Të gjithë llojet</option>
-          {LLOJET_OPTIONS.filter(Boolean).map((l) => (
-            <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
-          ))}
-        </select>
-
-        {/* Statusi filter */}
-        <select
-          value={filters.statusi}
-          onChange={(e) => handleFilterChange('statusi', e.target.value)}
-          className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-700 focus:border-transparent bg-white"
-        >
-          <option value="">Të gjitha statuset</option>
-          {STATUSET_OPTIONS.filter(Boolean).map((s) => (
-            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-          ))}
+          <option value="">Të gjitha</option>
+          <option value="1">Aktive</option>
+          <option value="0">Joaktive</option>
         </select>
       </div>
 
@@ -154,24 +131,25 @@ export default function KlientetPage() {
         </div>
       ) : isError ? (
         <div className="flex items-center justify-center py-24 text-slate-500">
-          <p className="text-sm font-medium">Ndodhi një gabim gjatë ngarkimit të klientëve.</p>
+          <p className="text-sm font-medium">Ndodhi një gabim gjatë ngarkimit të shërbimeve.</p>
         </div>
-      ) : klientet.length === 0 ? (
+      ) : sherbimet.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400">
           <svg className="w-12 h-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
           </svg>
-          <p className="text-sm font-semibold">Nuk u gjet asnjë klient.</p>
-          <p className="text-xs mt-1">Ndryshoni filtrat ose shtoni klient të ri.</p>
+          <p className="text-sm font-semibold">Nuk u gjet asnjë shërbim shtesë.</p>
+          <p className="text-xs mt-1">Shtoni shërbimin e parë duke klikuar butonin sipër.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {klientet.map((klient) => (
-            <KlientCard
-              key={klient.klient_id}
-              klient={klient}
+          {sherbimet.map((s) => (
+            <SherbimCard
+              key={s.sherbim_id}
+              sherbim={s}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
+              onSync={setSyncTarget}
             />
           ))}
         </div>
@@ -209,24 +187,31 @@ export default function KlientetPage() {
       <Modal
         isOpen={formOpen}
         onClose={closeForm}
-        title={editingKlient ? 'Ndrysho klientin' : 'Klient i ri'}
-        size="lg"
+        title={editingSherbim ? 'Ndrysho shërbimin' : 'Shërbim i ri'}
+        size="md"
       >
-        <KlientForm
-          initialData={editingKlient}
+        <SherbimForm
+          initialData={editingSherbim}
           onSubmit={handleFormSubmit}
           onCancel={closeForm}
           loading={isMutating}
         />
       </Modal>
 
+      {/* N:M sync modal */}
+      <SyncModal
+        sherbim={syncTarget}
+        isOpen={!!syncTarget}
+        onClose={() => setSyncTarget(null)}
+      />
+
       {/* Delete confirmation */}
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={() => deleteMutation.mutate(deleteTarget?.klient_id)}
-        title="Fshi klientin?"
-        message={`A jeni të sigurt që doni të fshini ${deleteTarget?.emri_plote ?? ''}? Ky veprim nuk mund të zhbëhet.`}
+        onConfirm={() => deleteMutation.mutate(deleteTarget?.sherbim_id)}
+        title="Fshi shërbimin?"
+        message={`A jeni të sigurt që doni të fshini "${deleteTarget?.emri_sherbimit ?? ''}"? Do të hiqet edhe nga të gjitha kontratat.`}
         confirmLabel="Po, fshi"
         loading={deleteMutation.isPending}
       />
