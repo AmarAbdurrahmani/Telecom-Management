@@ -7,6 +7,7 @@ import KlientetPage from '../features/klientet/KlientetPage.jsx';
 import PaketaPage from '../features/paketat/PaketaPage.jsx';
 import KontratatPage from '../features/kontratat/KontratatPage.jsx';
 import FaturatPage from '../features/faturat/FaturatPage.jsx';
+import NumratPage from '../features/numrat/NumratPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
 function FullPageSpinner() {
@@ -50,7 +51,8 @@ export default function AppRouter() {
         <Route path="klientet"  element={<KlientetPage />} />
         <Route path="paketat"   element={<PaketaPage />} />
         <Route path="kontratat" element={<KontratatPage />} />
-        <Route path="faturat"   element={<FaturatPage />} />
+        <Route path="faturat"          element={<FaturatPage />} />
+        <Route path="numrat-telefonit" element={<NumratPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

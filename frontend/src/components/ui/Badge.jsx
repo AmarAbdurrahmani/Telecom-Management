@@ -21,6 +21,12 @@ const VARIANTS = {
   e_papaguar: 'bg-amber-50   text-amber-700   dot-amber',
   e_paguar:   'bg-green-50   text-green-700   dot-green',
   e_vonuar:   'bg-red-50     text-red-700     dot-red',
+  // Statusi & lloji numrit
+  joaktiv:    'bg-slate-100  text-slate-500   dot-slate',
+  i_rezervuar:'bg-amber-50   text-amber-700   dot-amber',
+  i_portuar:  'bg-blue-50    text-blue-700    dot-blue',
+  prepaid:    'bg-sky-50     text-sky-700     dot-sky',
+  postpaid:   'bg-indigo-50  text-indigo-700  dot-indigo',
   // Lloji shërbimit
   internet:   'bg-blue-50    text-blue-700    dot-blue',
   telefoni:   'bg-violet-50  text-violet-700  dot-violet',
@@ -37,6 +43,8 @@ const DOT_COLORS = {
   'dot-yellow':  'bg-yellow-500',
   'dot-emerald': 'bg-emerald-500',
   'dot-red':     'bg-red-500',
+  'dot-sky':     'bg-sky-500',
+  'dot-indigo':  'bg-indigo-500',
 };
 
 export default function Badge({ value }) {
