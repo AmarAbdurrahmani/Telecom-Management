@@ -9,7 +9,13 @@ class Client extends Model
     protected $table = 'clients';
     protected $primaryKey = 'klient_id';
 
+    public function kontratat()
+    {
+        return $this->hasMany(Kontrate::class, 'klient_id', 'klient_id');
+    }
+
     protected $fillable = [
+        'user_id',
         'emri',
         'mbiemri',
         'numri_personal',
@@ -20,4 +26,9 @@ class Client extends Model
         'statusi',
         'data_regjistrimit',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

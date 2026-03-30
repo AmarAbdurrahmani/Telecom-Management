@@ -32,4 +32,24 @@ class Kontrate extends Model
     {
         return $this->belongsTo(Paket::class, 'paket_id', 'paket_id');
     }
+
+    public function faturat()
+    {
+        return $this->hasMany(Fature::class, 'kontrate_id', 'kontrate_id');
+    }
+
+    public function numratTelefonit()
+    {
+        return $this->hasMany(NumriTelefonit::class, 'kontrate_id', 'kontrate_id');
+    }
+
+    public function sherbimetShtesa()
+    {
+        return $this->belongsToMany(
+            SherbimShtese::class,
+            'kontrate_sherbime',
+            'kontrate_id',
+            'sherbim_id'
+        )->withTimestamps();
+    }
 }
