@@ -31,4 +31,9 @@ class Client extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function ankesat()
+    {
+        return $this->hasMany(Ankese::class, 'klient_id', 'klient_id');
+    }
 }
