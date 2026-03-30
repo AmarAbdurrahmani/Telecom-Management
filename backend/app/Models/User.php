@@ -26,6 +26,9 @@ class User extends Authenticatable
         'roli',
         'aktiv',
         'last_login_at',
+        'departamenti',
+        'pozita',
+        'telefoni',
     ];
 
     public function klient()

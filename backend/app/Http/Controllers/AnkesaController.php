@@ -13,7 +13,7 @@ class AnkesaController extends Controller
     {
         $query = Ankese::with([
             'klient:klient_id,emri,mbiemri,email,lloji_klientit',
-            'punonjes:id,name',
+            'punonjes:id,name,roli,pozita',
         ]);
 
         if ($request->filled('search')) {
@@ -73,7 +73,7 @@ class AnkesaController extends Controller
         $ankese = Ankese::create($validated);
 
         return response()->json(
-            $ankese->load(['klient:klient_id,emri,mbiemri,email,lloji_klientit', 'punonjes:id,name']),
+            $ankese->load(['klient:klient_id,emri,mbiemri,email,lloji_klientit', 'punonjes:id,name,roli,pozita']),
             201
         );
     }
@@ -83,7 +83,7 @@ class AnkesaController extends Controller
         return response()->json(
             Ankese::with([
                 'klient:klient_id,emri,mbiemri,email,lloji_klientit',
-                'punonjes:id,name',
+                'punonjes:id,name,roli,pozita',
             ])->findOrFail($id)
         );
     }
@@ -116,7 +116,7 @@ class AnkesaController extends Controller
         $ankese->update($validated);
 
         return response()->json(
-            $ankese->load(['klient:klient_id,emri,mbiemri,email,lloji_klientit', 'punonjes:id,name'])
+            $ankese->load(['klient:klient_id,emri,mbiemri,email,lloji_klientit', 'punonjes:id,name,roli,pozita'])
         );
     }
 
@@ -141,7 +141,7 @@ class AnkesaController extends Controller
             User::whereIn('roli', ['admin', 'tl', 'sv', 'agent'])
                 ->where('aktiv', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'roli'])
+                ->get(['id', 'name', 'roli', 'pozita'])
         );
     }
 }

@@ -18,6 +18,8 @@ class UserController extends Controller
             $query->where(fn($q) =>
                 $q->where('name', 'like', "%$s%")
                   ->orWhere('email', 'like', "%$s%")
+                  ->orWhere('departamenti', 'like', "%$s%")
+                  ->orWhere('pozita', 'like', "%$s%")
             );
         }
 
@@ -48,11 +50,14 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:100',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            'roli'     => 'required|in:admin,tl,sv,agent,klient',
-            'aktiv'    => 'boolean',
+            'name'         => 'required|string|max:100',
+            'email'        => 'required|email|unique:users,email',
+            'password'     => 'required|string|min:6',
+            'roli'         => 'required|in:admin,tl,sv,agent,klient',
+            'aktiv'        => 'boolean',
+            'departamenti' => 'nullable|string|max:100',
+            'pozita'       => 'nullable|string|max:100',
+            'telefoni'     => 'nullable|string|max:30',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -71,10 +76,13 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'name'  => 'sometimes|required|string|max:100',
-            'email' => 'sometimes|required|email|unique:users,email,' . $id,
-            'roli'  => 'sometimes|required|in:admin,tl,sv,agent,klient',
-            'aktiv' => 'boolean',
+            'name'         => 'sometimes|required|string|max:100',
+            'email'        => 'sometimes|required|email|unique:users,email,' . $id,
+            'roli'         => 'sometimes|required|in:admin,tl,sv,agent,klient',
+            'aktiv'        => 'boolean',
+            'departamenti' => 'nullable|string|max:100',
+            'pozita'       => 'nullable|string|max:100',
+            'telefoni'     => 'nullable|string|max:30',
         ]);
 
         $user->update($validated);
