@@ -13,6 +13,7 @@ import SherbimetPage from '../features/sherbimet/SherbimetPage.jsx';
 import KlientDetajet from '../features/klientet/KlientDetajet.jsx';
 import UsersPage from '../features/users/UsersPage.jsx';
 import KlientPortalPage from '../features/portal/KlientPortalPage.jsx';
+import AnkesatPage from '../features/ankesat/AnkesatPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
 function FullPageSpinner() {
@@ -74,6 +75,7 @@ export default function AppRouter() {
         <Route path="numrat-telefonit"    element={<NumratPage />} />
         <Route path="sherbimet-shtesa"    element={<SherbimetPage />} />
         <Route path="users"               element={<UsersPage />} />
+        <Route path="ankesat"             element={<AnkesatPage />} />
       </Route>
 
       {/* ── Klient portal ── */}
