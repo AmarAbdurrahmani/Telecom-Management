@@ -116,7 +116,9 @@ export default function AnkesaForm({ initialData = null, onSubmit, onCancel, loa
           <select value={form.punonjes_id} onChange={set('punonjes_id')} className={fieldCls('punonjes_id')}>
             <option value="">— Pa caktuar —</option>
             {punonjesit.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} ({p.roli})</option>
+              <option key={p.id} value={p.id}>
+                {p.name}{p.pozita ? ` · ${p.pozita}` : ''}
+              </option>
             ))}
           </select>
           <FieldError field="punonjes_id" />
