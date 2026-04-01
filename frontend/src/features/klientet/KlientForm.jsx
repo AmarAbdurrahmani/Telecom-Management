@@ -7,6 +7,7 @@ const EMPTY_FORM = {
   emri: '', mbiemri: '', numri_personal: '', email: '', telefoni: '',
   adresa: '', lloji_klientit: 'individual', statusi: 'aktiv',
   data_regjistrimit: '',
+  data_faturimit: '',
   // Portal account
   password: '', portal_aktiv: true,
 };
@@ -28,6 +29,7 @@ export default function KlientForm({ initialData = null, onSubmit, onCancel, loa
         lloji_klientit:     initialData.lloji_klientit     ?? 'individual',
         statusi:            initialData.statusi            ?? 'aktiv',
         data_regjistrimit:  initialData.data_regjistrimit  ?? '',
+        data_faturimit:     initialData.data_faturimit     ?? '',
         password:           '',
         portal_aktiv:       initialData.user?.aktiv        ?? false,
       });
@@ -132,6 +134,29 @@ export default function KlientForm({ initialData = null, onSubmit, onCancel, loa
         <input type="date" required value={form.data_regjistrimit} onChange={set('data_regjistrimit')} className={fieldCls('data_regjistrimit')} />
         <FieldError field="data_regjistrimit" />
       </div>
+
+      {/* Data Faturimit */}
+      {isEdit && (
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            Cikli i Faturimit
+            {initialData?.ndrysho_ciklin_count > 0 && (
+              <span className="ml-2 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                {initialData.ndrysho_ciklin_count === 1 ? 'Ndryshimi i 2-të me 5€' : `Ndryshime: ${initialData.ndrysho_ciklin_count}`}
+              </span>
+            )}
+          </label>
+          <select value={form.data_faturimit} onChange={set('data_faturimit')} className={fieldCls('data_faturimit')}>
+            <option value="">— Pa cikël të caktuar —</option>
+            <option value="7">Data 7 e çdo muaji</option>
+            <option value="22">Data 22 e çdo muaji</option>
+          </select>
+          {!initialData?.ndrysho_ciklin_count && (
+            <p className="text-[11px] text-slate-400 mt-1">Ndryshimi i parë është falas. I dyti e tutje: 5€.</p>
+          )}
+          <FieldError field="data_faturimit" />
+        </div>
+      )}
 
       {/* ── Portal account section ── */}
       <div className="border-t border-slate-100 pt-4">

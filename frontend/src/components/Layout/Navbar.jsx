@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth.js';
+import UserAvatar from '../ui/UserAvatar.jsx';
 
 const ROLE_LABELS = {
   admin:  'Admin',
@@ -27,11 +28,7 @@ export default function Navbar({ onMenuClick }) {
       <div className="flex items-center gap-3">
         {/* User info */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-black text-slate-600">
-              {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
-            </span>
-          </div>
+          <UserAvatar size="sm" />
           <div className="hidden sm:block text-right">
             <p className="text-sm font-bold text-slate-800 leading-tight">{user?.name}</p>
             <p className="text-[11px] text-slate-400 uppercase font-medium tracking-wider">

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { usersApi } from '../../api/usersApi.js';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Modal from '../../components/ui/Modal.jsx';
+import UserAvatar from '../../components/ui/UserAvatar.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -340,9 +341,7 @@ export default function UsersPage() {
                   {/* Avatar + emri */}
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${ROLE_COLORS[u.roli] ?? 'bg-slate-100 text-slate-600'}`}>
-                        <span className="text-xs font-black">{initials(u.name)}</span>
-                      </div>
+                      <UserAvatar size="sm" />
                       <div>
                         <p className="font-semibold text-slate-900">{u.name}</p>
                         <p className="text-xs text-slate-400">{u.email}</p>

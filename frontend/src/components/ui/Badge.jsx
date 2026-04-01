@@ -15,8 +15,11 @@ const VARIANTS = {
   aktive:     'bg-green-50   text-green-700   dot-green',
   joaktive:   'bg-slate-100  text-slate-500   dot-slate',
   // Statusi kontratës
-  e_skaduar:  'bg-red-50     text-red-700     dot-red',
-  anulluar:   'bg-slate-100  text-slate-500   dot-slate',
+  e_skaduar:    'bg-red-50     text-red-700     dot-red',
+  anulluar:     'bg-slate-100  text-slate-500   dot-slate',
+  // Statusi SIM kartelës
+  bllokuar:     'bg-red-50     text-red-700     dot-red',
+  e_zvendesuar: 'bg-slate-100  text-slate-500   dot-slate',
   // Statusi faturës
   e_papaguar: 'bg-amber-50   text-amber-700   dot-amber',
   e_paguar:   'bg-green-50   text-green-700   dot-green',

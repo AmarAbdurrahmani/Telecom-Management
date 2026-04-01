@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { klientetApi } from '../../api/klientetApi.js';
+import { historyApi } from '../../api/historyApi.js';
+import { simKartelaApi } from '../../api/simKartelaApi.js';
 import Badge from '../../components/ui/Badge.jsx';
+import Modal from '../../components/ui/Modal.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import ClientAvatar from '../../components/ui/ClientAvatar.jsx';
+import SimSection from './SimSection.jsx';
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color = 'slate' }) {
@@ -177,14 +181,214 @@ function LlogariaTab({ klient, onTogglePortal }) {
   );
 }
 
+// ─── Historia Tab ─────────────────────────────────────────────────────────────
+const VEPRIMI_CONFIG = {
+  krijim:         { label: 'Krijim',           color: 'bg-violet-100 text-violet-700',  dot: 'bg-violet-500' },
+  kompensim:      { label: 'Kompensim',         color: 'bg-emerald-100 text-emerald-700',dot: 'bg-emerald-500' },
+  ndryshim_ciklit:{ label: 'Ndryshim cikli',   color: 'bg-amber-100  text-amber-700',  dot: 'bg-amber-500'  },
+  ndryshim_pakete:{ label: 'Ndryshim pakete',  color: 'bg-blue-100   text-blue-700',   dot: 'bg-blue-500'   },
+  sim_kartele:      { label: 'SIM Kartelë',     color: 'bg-teal-100   text-teal-700',   dot: 'bg-teal-500'   },
+  fature_gjeneruar: { label: 'Faturë',          color: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500' },
+  ankese:           { label: 'Ankesë',          color: 'bg-red-100    text-red-700',    dot: 'bg-red-500'    },
+};
+const defaultEvent = { label: 'Veprim', color: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' };
+
+const KANALI_ICON = {
+  email:  '✉',
+  sms:    '💬',
+  poste:  '📬',
+  portal: '🌐',
+};
+
+function HistoriaTab({ klientId }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['historia', klientId],
+    queryFn:  () => historyApi.getByKlient(klientId).then((r) => r.data),
+  });
+
+  const events = data?.data ?? [];
+
+  if (isLoading) return <div className="flex justify-center py-12"><Spinner /></div>;
+
+  if (events.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+      <svg className="w-10 h-10 mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p className="font-semibold text-sm">Nuk ka histori të regjistruar.</p>
+    </div>
+  );
+
+  return (
+    <div className="relative">
+      {/* Timeline line */}
+      <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-100" />
+      <div className="space-y-1">
+        {events.map((e) => {
+          const cfg = VEPRIMI_CONFIG[e.veprimi] ?? defaultEvent;
+          return (
+            <div key={e.id} className="flex gap-4 pl-12 relative pb-4">
+              {/* Dot */}
+              <div className={`absolute left-3.5 top-2 w-3 h-3 rounded-full border-2 border-white ${cfg.dot}`} />
+              {/* Card */}
+              <div className="flex-1 bg-white border border-slate-100 rounded-2xl px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${cfg.color}`}>
+                    {cfg.label}
+                  </span>
+                  {e.shuma != null && (
+                    <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      {Number(e.shuma) > 0 ? `+${Number(e.shuma).toFixed(2)}€` : `${Number(e.shuma).toFixed(2)}€`}
+                    </span>
+                  )}
+                  {e.kanali && (
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {KANALI_ICON[e.kanali] ?? '•'} {e.kanali}
+                    </span>
+                  )}
+                  <span className="ml-auto text-[10px] text-slate-400 font-medium">
+                    {fmt(e.created_at)}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-700 font-medium leading-snug">{e.pershkrimi}</p>
+                {e.punonjes && (
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">nga {e.punonjes.name}</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Generate Faturë Modal ────────────────────────────────────────────────────
+const MUAJAT = [
+  { v: 1, l: 'Janar' }, { v: 2, l: 'Shkurt' }, { v: 3, l: 'Mars' },
+  { v: 4, l: 'Prill' }, { v: 5, l: 'Maj' },    { v: 6, l: 'Qershor' },
+  { v: 7, l: 'Korrik'},{ v: 8, l: 'Gusht' },  { v: 9, l: 'Shtator' },
+  { v: 10,l: 'Tetor' },{ v: 11,l: 'Nëntor' }, { v: 12,l: 'Dhjetor' },
+];
+
+function GjenerojFatureModal({ isOpen, onClose, klientId, onSuccess }) {
+  const now = new Date();
+  const [form, setForm] = useState({ muaji: now.getMonth() + 1, viti: now.getFullYear(), tvsh_perqindja: 18 });
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState('');
+
+  const mut = useMutation({
+    mutationFn: (data) => simKartelaApi.gjenerojFature(klientId, data),
+    onSuccess: (res) => { setResult(res.data); onSuccess?.(); },
+    onError: (e) => setErr(e.response?.data?.message ?? 'Gabim gjatë gjenerimit.'),
+  });
+
+  function handleClose() {
+    setResult(null);
+    setErr('');
+    onClose();
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    setErr('');
+    mut.mutate(form);
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="Gjenero Faturë" size="sm">
+      {result ? (
+        <div className="space-y-4">
+          <div className={`rounded-xl px-4 py-3 ${result.te_gjenuara?.length > 0 ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+            <p className="text-sm font-bold">{result.mesazh}</p>
+          </div>
+          {result.te_gjenuara?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fatura të gjeneruara</p>
+              {result.te_gjenuara.map((f) => (
+                <div key={f.fature_id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+                  <p className="text-xs font-bold text-slate-700">{f.periudha}</p>
+                  <p className="text-sm font-black text-slate-900">{Number(f.totali).toFixed(2)}€</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {result.ekzistuese?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tashmë ekzistuese</p>
+              {result.ekzistuese.map((nr) => (
+                <span key={nr} className="inline-block text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg mr-1 mb-1">{nr}</span>
+              ))}
+            </div>
+          )}
+          <button onClick={handleClose}
+            className="w-full py-2.5 rounded-xl bg-[#111827] text-white text-sm font-bold hover:bg-slate-700 transition-colors">
+            Mbyll
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Muaji</label>
+              <select
+                value={form.muaji}
+                onChange={(e) => setForm((p) => ({ ...p, muaji: +e.target.value }))}
+                className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+              >
+                {MUAJAT.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">Viti</label>
+              <input
+                type="number"
+                value={form.viti}
+                min={2020}
+                max={2099}
+                onChange={(e) => setForm((p) => ({ ...p, viti: +e.target.value }))}
+                className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">TVSH (%)</label>
+            <input
+              type="number"
+              value={form.tvsh_perqindja}
+              min={0}
+              max={100}
+              step={0.5}
+              onChange={(e) => setForm((p) => ({ ...p, tvsh_perqindja: +e.target.value }))}
+              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+            />
+          </div>
+          {err && <p className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-2 rounded-lg">{err}</p>}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={handleClose}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+              Anulo
+            </button>
+            <button type="submit" disabled={mut.isPending}
+              className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-60 transition-colors">
+              {mut.isPending ? 'Duke gjeneruar...' : 'Gjenero'}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
-const TABS = ['Kontratat', 'Faturat', 'Numrat', 'Llogaria'];
+const TABS = ['Kontratat', 'Faturat', 'Numrat', 'SIM/eSIM', 'Llogaria', 'Historia'];
 
 export default function KlientDetajet() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const qc       = useQueryClient();
   const [tab, setTab] = useState('Kontratat');
+  const [gjenerojOpen, setGjenerojOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['klient-detail', id],
@@ -226,8 +430,20 @@ export default function KlientDetajet() {
               <span>ID: {klient.numri_personal}</span>
               {klient.adresa && <span>{klient.adresa}</span>}
               <span>Regjistruar: {fmt(klient.data_regjistrimit)}</span>
+              {klient.data_faturimit && <span>Faturim: data {klient.data_faturimit}</span>}
+              {klient.krediti > 0 && <span className="text-emerald-600 font-bold">Kredit: {Number(klient.krediti).toFixed(2)}€</span>}
             </div>
           </div>
+          {/* Gjenero Faturë button */}
+          <button
+            onClick={() => setGjenerojOpen(true)}
+            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Gjenero Faturë
+          </button>
         </div>
       </div>
 
@@ -253,17 +469,28 @@ export default function KlientDetajet() {
             onClick={() => setTab(t)}
           />
         ))}
+
       </div>
 
       {tab === 'Kontratat' && <KontratatTab kontratat={kontratat} />}
       {tab === 'Faturat'   && <FaturatTab   kontratat={kontratat} />}
       {tab === 'Numrat'    && <NumratTab    kontratat={kontratat} />}
+      {tab === 'SIM/eSIM'  && <SimSection   klientId={id} />}
       {tab === 'Llogaria'  && (
         <LlogariaTab
           klient={klient}
           onTogglePortal={() => togglePortal.mutate(!klient.user?.aktiv)}
         />
       )}
+      {tab === 'Historia' && <HistoriaTab klientId={id} />}
+
+      {/* Generate Invoice Modal */}
+      <GjenerojFatureModal
+        isOpen={gjenerojOpen}
+        onClose={() => setGjenerojOpen(false)}
+        klientId={id}
+        onSuccess={() => qc.invalidateQueries({ queryKey: ['klient-detail', id] })}
+      />
     </div>
   );
 }

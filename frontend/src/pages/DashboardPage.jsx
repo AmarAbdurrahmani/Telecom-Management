@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -5,6 +6,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import api from '../api/axios.js';
+import ClientAvatar from '../components/ui/ClientAvatar.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -128,6 +130,115 @@ function TypeBars({ data }) {
   );
 }
 
+// ─── Machine Search ───────────────────────────────────────────────────────────
+const STATUS_CLS = {
+  aktiv:      'bg-emerald-100 text-emerald-700',
+  pezulluar:  'bg-amber-100   text-amber-700',
+  joaktiv:    'bg-slate-100   text-slate-500',
+};
+
+function MachineSearch() {
+  const navigate   = useNavigate();
+  const [q, setQ]  = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapRef    = useRef(null);
+
+  const { data, isFetching } = useQuery({
+    queryKey:  ['machine-search', q],
+    queryFn:   () => api.get('/klientet', { params: { search: q, per_page: 8 } }).then((r) => r.data),
+    enabled:   q.trim().length >= 1,
+    staleTime: 10_000,
+  });
+
+  const results = data?.data ?? [];
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="relative w-full max-w-2xl">
+      {/* Input */}
+      <div className="relative">
+        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+        </svg>
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Kërko klientin sipas emrit, emailit ose ID…"
+          className="w-full pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-700 focus:border-transparent transition"
+        />
+        {isFetching && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <span className="w-4 h-4 border-2 border-slate-300 border-t-violet-700 rounded-full animate-spin block" />
+          </div>
+        )}
+        {q && !isFetching && (
+          <button onClick={() => { setQ(''); setOpen(false); }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown results */}
+      {open && q.trim().length >= 1 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+          {results.length === 0 && !isFetching ? (
+            <div className="py-8 text-center text-slate-400 text-sm">Nuk u gjet asnjë klient për "{q}"</div>
+          ) : (
+            <div>
+              <div className="px-4 py-2.5 border-b border-slate-50 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  {results.length} rezultate
+                </span>
+                <button
+                  onClick={() => { navigate(`/klientet?search=${encodeURIComponent(q)}`); setOpen(false); }}
+                  className="text-[11px] font-bold text-violet-700 hover:text-violet-900"
+                >
+                  Shiko të gjitha →
+                </button>
+              </div>
+              {results.map((k) => (
+                <button
+                  key={k.klient_id}
+                  onClick={() => { navigate(`/klientet/${k.klient_id}`); setOpen(false); setQ(''); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-violet-50 transition-colors text-left group"
+                >
+                  <ClientAvatar lloji={k.lloji_klientit} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-violet-700 truncate">
+                      {k.emri} {k.mbiemri}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate">{k.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] text-slate-400 font-mono">#{k.klient_id}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${STATUS_CLS[k.statusi] ?? STATUS_CLS.joaktiv}`}>
+                      {k.statusi}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -146,10 +257,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-[#111827]">Workspace</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Pasqyra analitike e sistemit</p>
+      {/* Header + Machine Search */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-[#111827]">Workspace</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Pasqyra analitike e sistemit</p>
+        </div>
+        <MachineSearch />
       </div>
 
       {/* ── KPI Cards ── */}
