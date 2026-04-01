@@ -25,6 +25,9 @@ class Client extends Model
         'lloji_klientit',
         'statusi',
         'data_regjistrimit',
+        'data_faturimit',
+        'ndrysho_ciklin_count',
+        'krediti',
     ];
 
     public function user()
@@ -35,5 +38,15 @@ class Client extends Model
     public function ankesat()
     {
         return $this->hasMany(Ankese::class, 'klient_id', 'klient_id');
+    }
+
+    public function historia()
+    {
+        return $this->hasMany(ClientHistory::class, 'klient_id', 'klient_id');
+    }
+
+    public function simKartela()
+    {
+        return $this->hasMany(SimKartela::class, 'klient_id', 'klient_id');
     }
 }

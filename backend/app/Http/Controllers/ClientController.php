@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\HistoryLogger;
 use App\Models\Client;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -79,6 +80,14 @@ class ClientController extends Controller
         $validated['user_id'] = $user->id;
         $client = Client::create($validated);
 
+        HistoryLogger::log(
+            $client->klient_id,
+            'krijim',
+            "Klienti {$client->emri} {$client->mbiemri} u regjistrua në sistem.",
+            null,
+            'portal'
+        );
+
         return response()->json($client->load('user:id,email,aktiv,last_login_at'), 201);
     }
 
@@ -106,11 +115,33 @@ class ClientController extends Controller
             // Portal account
             'password'          => 'nullable|string|min:6',
             'portal_aktiv'      => 'nullable|boolean',
+            // Billing cycle
+            'data_faturimit'    => 'nullable|in:7,22',
         ]);
 
-        $password    = $validated['password']    ?? null;
-        $portalAktiv = $validated['portal_aktiv'] ?? null;
+        $password      = $validated['password']      ?? null;
+        $portalAktiv   = $validated['portal_aktiv']  ?? null;
+        $dataFaturimit = $validated['data_faturimit'] ?? null;
         unset($validated['password'], $validated['portal_aktiv']);
+
+        // Billing cycle change logic
+        if ($dataFaturimit !== null && $dataFaturimit != $client->data_faturimit) {
+            $count   = $client->ndrysho_ciklin_count + 1;
+            $kostoja = $count === 1 ? 0 : 5.00;
+
+            $validated['data_faturimit']      = $dataFaturimit;
+            $validated['ndrysho_ciklin_count'] = $count;
+
+            HistoryLogger::log(
+                $client->klient_id,
+                'ndryshim_ciklit',
+                "Cikli i faturimit u ndryshua në datën {$dataFaturimit}." .
+                ($kostoja > 0 ? " Kosto: {$kostoja}€." : " Falas (ndryshimi i parë)."),
+                $kostoja > 0 ? $kostoja : null,
+                'portal',
+                ['data_e_re' => $dataFaturimit, 'ndryshimi_nr' => $count]
+            );
+        }
 
         $client->update($validated);
 

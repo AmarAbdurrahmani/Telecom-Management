@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\HistoryLogger;
 use App\Models\Ankese;
 use App\Models\Client;
 use App\Models\User;
@@ -61,13 +62,17 @@ class AnkesaController extends Controller
     {
         $validated = $request->validate([
             'klient_id'       => 'required|exists:clients,klient_id',
-            'punonjes_id'     => 'nullable|exists:users,id',
-            'kategoria'       => 'required|in:teknik,faturim,sherbimi,portabiliteti,tjeter',
-            'pershkrimi'      => 'required|string|max:2000',
-            'data_ankeses'    => 'required|date',
-            'statusi'         => 'required|in:e_re,ne_process,e_zgjidhur,e_mbyllur',
-            'pergjigja'       => 'nullable|string|max:2000',
-            'data_zgjidhjes'  => 'nullable|date',
+            'punonjes_id'          => 'nullable|exists:users,id',
+            'kategoria'            => 'required|in:teknik,faturim,sherbimi,portabiliteti,tjeter',
+            'pershkrimi'           => 'required|string|max:2000',
+            'data_ankeses'         => 'required|date',
+            'statusi'              => 'required|in:e_re,ne_process,e_zgjidhur,e_mbyllur',
+            'pergjigja'            => 'nullable|string|max:2000',
+            'data_zgjidhjes'       => 'nullable|date',
+            'ka_kompensim'         => 'boolean',
+            'arsyeja_kompensimit'  => 'nullable|string|max:255',
+            'shuma_kompensimit'    => 'nullable|numeric|min:0|max:9999',
+            'kanali_njoftimit'     => 'nullable|in:email,sms,poste,portal',
         ]);
 
         $ankese = Ankese::create($validated);
@@ -93,14 +98,19 @@ class AnkesaController extends Controller
         $ankese = Ankese::findOrFail($id);
 
         $validated = $request->validate([
-            'klient_id'       => 'sometimes|required|exists:clients,klient_id',
-            'punonjes_id'     => 'nullable|exists:users,id',
-            'kategoria'       => 'sometimes|required|in:teknik,faturim,sherbimi,portabiliteti,tjeter',
-            'pershkrimi'      => 'sometimes|required|string|max:2000',
-            'data_ankeses'    => 'sometimes|required|date',
-            'statusi'         => 'sometimes|required|in:e_re,ne_process,e_zgjidhur,e_mbyllur',
-            'pergjigja'       => 'nullable|string|max:2000',
-            'data_zgjidhjes'  => 'nullable|date',
+            'klient_id'            => 'sometimes|required|exists:clients,klient_id',
+            'punonjes_id'          => 'nullable|exists:users,id',
+            'kategoria'            => 'sometimes|required|in:teknik,faturim,sherbimi,portabiliteti,tjeter',
+            'pershkrimi'           => 'sometimes|required|string|max:2000',
+            'data_ankeses'         => 'sometimes|required|date',
+            'statusi'              => 'sometimes|required|in:e_re,ne_process,e_zgjidhur,e_mbyllur',
+            'pergjigja'            => 'nullable|string|max:2000',
+            'data_zgjidhjes'       => 'nullable|date',
+            // Compensation
+            'ka_kompensim'         => 'boolean',
+            'arsyeja_kompensimit'  => 'nullable|string|max:255',
+            'shuma_kompensimit'    => 'nullable|numeric|min:0|max:9999',
+            'kanali_njoftimit'     => 'nullable|in:email,sms,poste,portal',
         ]);
 
         // Auto-set data_zgjidhjes when marking as resolved/closed
@@ -113,7 +123,30 @@ class AnkesaController extends Controller
             $validated['data_zgjidhjes'] = now()->toDateString();
         }
 
+        $wasKompensim    = $ankese->ka_kompensim;
+        $newKompensim    = $validated['ka_kompensim'] ?? false;
+        $shuma           = $validated['shuma_kompensimit'] ?? null;
+        $arsyeja         = $validated['arsyeja_kompensimit'] ?? null;
+        $kanali          = $validated['kanali_njoftimit'] ?? 'email';
+        $klientId        = $ankese->klient_id;
+
         $ankese->update($validated);
+
+        // Apply compensation when first approved
+        if ($newKompensim && !$wasKompensim && $shuma > 0) {
+            // Add credit to client
+            Client::where('klient_id', $klientId)
+                ->increment('krediti', $shuma);
+
+            HistoryLogger::log(
+                $klientId,
+                'kompensim',
+                "Kompensim i aprovuar: {$arsyeja}. Shuma: {$shuma}€ u shtua si kredit.",
+                $shuma,
+                $kanali,
+                ['ankese_id' => $ankese->ankese_id, 'arsyeja' => $arsyeja]
+            );
+        }
 
         return response()->json(
             $ankese->load(['klient:klient_id,emri,mbiemri,email,lloji_klientit', 'punonjes:id,name,roli,pozita'])

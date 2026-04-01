@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\HistoryLogger;
+use App\Models\Client;
 use App\Models\Fature;
 use App\Models\Kontrate;
 use Illuminate\Http\Request;
@@ -109,6 +111,88 @@ class FatureController extends Controller
     {
         Fature::findOrFail($id)->delete();
         return response()->json(['message' => 'Fatura u fshi me sukses.']);
+    }
+
+    /**
+     * POST /klientet/{id}/gjenero-fature
+     * Generate invoices for all active contracts of a client for a given month/year.
+     */
+    public function generate(Request $request, $klientId)
+    {
+        $client = Client::with([
+            'kontratat' => fn($q) => $q->where('statusi', 'aktive')
+                ->with(['paket', 'sherbimetShtesa']),
+        ])->findOrFail($klientId);
+
+        $request->validate([
+            'muaji'          => 'required|integer|min:1|max:12',
+            'viti'           => 'required|integer|min:2020|max:2099',
+            'tvsh_perqindja' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $muaji  = (int) $request->muaji;
+        $viti   = (int) $request->viti;
+        $tvsh   = (float) ($request->tvsh_perqindja ?? 18);
+
+        $muajat_shqip = [
+            1 => 'Janar', 2 => 'Shkurt', 3 => 'Mars',    4 => 'Prill',
+            5 => 'Maj',   6 => 'Qershor',7 => 'Korrik', 8 => 'Gusht',
+            9 => 'Shtator',10 => 'Tetor',11 => 'Nëntor',12 => 'Dhjetor',
+        ];
+        $periudha = $muajat_shqip[$muaji] . ' ' . $viti;
+
+        $kontratat   = $client->kontratat;
+        $te_gjenuara = [];
+        $ekzistuese  = [];
+
+        foreach ($kontratat as $kontrate) {
+            // Skip if invoice already exists for this period + contract
+            $exists = Fature::where('kontrate_id', $kontrate->kontrate_id)
+                ->where('periudha', $periudha)
+                ->exists();
+
+            if ($exists) {
+                $ekzistuese[] = $kontrate->numri_kontrates;
+                continue;
+            }
+
+            $shuma_baze   = (float) $kontrate->paket->cmimi_mujor;
+            $shuma_shtese = $kontrate->sherbimetShtesa->sum('cmimi_mujor');
+            $tatimi       = round(($shuma_baze + $shuma_shtese) * $tvsh / 100, 2);
+            $totali       = round($shuma_baze + $shuma_shtese + $tatimi, 2);
+
+            $fature = Fature::create([
+                'kontrate_id'  => $kontrate->kontrate_id,
+                'periudha'     => $periudha,
+                'shuma_baze'   => $shuma_baze,
+                'shuma_shtese' => $shuma_shtese,
+                'tatimi'       => $tatimi,
+                'totali'       => $totali,
+                'data_leshimit'=> now()->toDateString(),
+                'statusi'      => 'e_papaguar',
+            ]);
+            $te_gjenuara[] = $fature;
+        }
+
+        if (count($te_gjenuara) > 0) {
+            $shumaTotal = collect($te_gjenuara)->sum('totali');
+            HistoryLogger::log(
+                $klientId,
+                'fature_gjeneruar',
+                "U gjeneruan " . count($te_gjenuara) . " faturë(a) për periudhën {$periudha}. Totali: " . number_format($shumaTotal, 2) . "€.",
+                $shumaTotal,
+                'portal',
+                ['periudha' => $periudha, 'nr_faturave' => count($te_gjenuara)]
+            );
+        }
+
+        return response()->json([
+            'te_gjenuara' => $te_gjenuara,
+            'ekzistuese'  => $ekzistuese,
+            'mesazh'      => count($te_gjenuara) > 0
+                ? count($te_gjenuara) . ' faturë(a) u gjeneruan me sukses për ' . $periudha . '.'
+                : 'Të gjitha faturat ekzistojnë tashmë për ' . $periudha . '.',
+        ]);
     }
 
     // Dropdown list of active contracts for the form

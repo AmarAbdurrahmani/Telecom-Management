@@ -4,31 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Ankese extends Model
+class ClientHistory extends Model
 {
-    protected $table      = 'ankesat';
-    protected $primaryKey = 'ankese_id';
+    protected $table = 'client_history';
 
     protected $fillable = [
         'klient_id',
-        'punonjes_id',
-        'kategoria',
+        'veprimi',
         'pershkrimi',
-        'data_ankeses',
-        'statusi',
-        'pergjigja',
-        'data_zgjidhjes',
-        'ka_kompensim',
-        'arsyeja_kompensimit',
-        'shuma_kompensimit',
-        'kanali_njoftimit',
+        'shuma',
+        'kanali',
+        'punonjes_id',
+        'meta_data',
     ];
 
     protected function casts(): array
     {
         return [
-            'data_ankeses'    => 'date',
-            'data_zgjidhjes'  => 'date',
+            'meta_data' => 'array',
+            'shuma'     => 'decimal:2',
         ];
     }
 
