@@ -67,11 +67,12 @@ class SimKartelaController extends Controller
         $kostoja     = $eshte_falas ? 0 : 5.00;
 
         $tipLabel = $validated['tip'] === 'esim' ? 'eSIM' : 'SIM Kartelë';
+        $ordinal  = $simCount === 1 ? 'parë' : "{$simCount}-të";
+        $kostoCopy = $eshte_falas ? 'Falas.' : "Kosto: {$kostoja}€.";
         HistoryLogger::log(
             $id,
             'sim_kartele',
-            "{$tipLabel} e {$ordinal = ($simCount === 1 ? 'parë' : "{$simCount}-të")} u lëshua. Nr: {$sim->nr_karteles}." .
-            ($eshte_falas ? ' Falas.' : " Kosto: {$kostoja}€."),
+            "{$tipLabel} e {$ordinal} u lëshua. Nr: {$sim->nr_karteles}. {$kostoCopy}",
             $kostoja > 0 ? $kostoja : null,
             'portal',
             ['sim_id' => $sim->sim_id, 'tip' => $sim->tip, 'nr_karteles' => $sim->nr_karteles]
