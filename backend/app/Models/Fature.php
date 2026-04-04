@@ -34,4 +34,9 @@ class Fature extends Model
     {
         return $this->belongsTo(Kontrate::class, 'kontrate_id', 'kontrate_id');
     }
+
+    public function pagesat()
+    {
+        return $this->hasMany(Pagese::class, 'fature_id', 'fature_id');
+    }
 }
