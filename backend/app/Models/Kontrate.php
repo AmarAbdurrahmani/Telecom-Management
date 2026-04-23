@@ -13,6 +13,9 @@ class Kontrate extends Model
         'numri_kontrates',
         'klient_id',
         'paket_id',
+        'pajisje_id',
+        'zbritja_perqindje',
+        'kodi_promo',
         'data_fillimit',
         'data_mbarimit',
         'statusi',
@@ -22,6 +25,11 @@ class Kontrate extends Model
         'data_fillimit'  => 'date',
         'data_mbarimit'  => 'date',
     ];
+
+    public function pajisje()
+    {
+        return $this->belongsTo(Pajisje::class, 'pajisje_id', 'pajisje_id');
+    }
 
     public function klient()
     {
