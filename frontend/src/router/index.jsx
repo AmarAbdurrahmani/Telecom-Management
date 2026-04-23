@@ -16,6 +16,8 @@ import KlientPortalPage from '../features/portal/KlientPortalPage.jsx';
 import AnkesatPage from '../features/ankesat/AnkesatPage.jsx';
 import InfrastrukturaPage from '../features/infrastruktura/InfrastrukturaPage.jsx';
 import PagesatPage from '../features/pagesat/PagesatPage.jsx';
+import PajisjetPage from '../features/pajisjet/PajisjetPage.jsx';
+import LifecyclePage from '../features/kontratat/LifecyclePage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
 function FullPageSpinner() {
@@ -80,6 +82,8 @@ export default function AppRouter() {
         <Route path="ankesat"             element={<AnkesatPage />} />
         <Route path="infrastruktura"      element={<InfrastrukturaPage />} />
         <Route path="pagesat"             element={<PagesatPage />} />
+        <Route path="pajisjet"            element={<PajisjetPage />} />
+        <Route path="lifecycle"           element={<LifecyclePage />} />
       </Route>
 
       {/* ── Klient portal ── */}

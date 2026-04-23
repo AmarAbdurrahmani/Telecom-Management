@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { kontratatApi } from '../../api/kontratatApi.js';
+import { pajisjetApi } from '../../api/pajisjetApi.js';
 import Spinner from '../../components/ui/Spinner.jsx';
 
 const STATUSET = ['aktive', 'e_skaduar', 'anulluar'];
 
 const EMPTY_FORM = {
-  numri_kontrates: '',
-  klient_id:       '',
-  paket_id:        '',
-  data_fillimit:   '',
-  data_mbarimit:   '',
-  statusi:         'aktive',
+  numri_kontrates:    '',
+  klient_id:          '',
+  paket_id:           '',
+  pajisje_id:         '',
+  zbritja_perqindje:  0,
+  kodi_promo:         '',
+  data_fillimit:      '',
+  data_mbarimit:      '',
+  statusi:            'aktive',
 };
 
 export default function KontratForm({ initialData = null, onSubmit, onCancel, loading = false }) {
@@ -28,15 +32,23 @@ export default function KontratForm({ initialData = null, onSubmit, onCancel, lo
     queryFn:  () => kontratatApi.paketaList().then((r) => r.data),
   });
 
+  const { data: pajisjetData = [] } = useQuery({
+    queryKey: ['pajisjet-aktive'],
+    queryFn:  () => pajisjetApi.listAktive().then((r) => r.data),
+  });
+
   useEffect(() => {
     if (initialData) {
       setForm({
-        numri_kontrates: initialData.numri_kontrates ?? '',
-        klient_id:       initialData.klient_id       ?? '',
-        paket_id:        initialData.paket_id        ?? '',
-        data_fillimit:   initialData.data_fillimit   ?? '',
-        data_mbarimit:   initialData.data_mbarimit   ?? '',
-        statusi:         initialData.statusi         ?? 'aktive',
+        numri_kontrates:   initialData.numri_kontrates   ?? '',
+        klient_id:         initialData.klient_id         ?? '',
+        paket_id:          initialData.paket_id          ?? '',
+        pajisje_id:        initialData.pajisje_id        ?? '',
+        zbritja_perqindje: initialData.zbritja_perqindje ?? 0,
+        kodi_promo:        initialData.kodi_promo        ?? '',
+        data_fillimit:     initialData.data_fillimit     ?? '',
+        data_mbarimit:     initialData.data_mbarimit     ?? '',
+        statusi:           initialData.statusi           ?? 'aktive',
       });
     } else {
       setForm(EMPTY_FORM);
@@ -54,9 +66,12 @@ export default function KontratForm({ initialData = null, onSubmit, onCancel, lo
     try {
       const payload = {
         ...form,
-        klient_id: parseInt(form.klient_id),
-        paket_id:  parseInt(form.paket_id),
-        data_mbarimit: form.data_mbarimit || null,
+        klient_id:          parseInt(form.klient_id),
+        paket_id:           parseInt(form.paket_id),
+        pajisje_id:         form.pajisje_id ? parseInt(form.pajisje_id) : null,
+        zbritja_perqindje:  parseInt(form.zbritja_perqindje) || 0,
+        kodi_promo:         form.kodi_promo || null,
+        data_mbarimit:      form.data_mbarimit || null,
       };
       await onSubmit(payload);
     } catch (err) {
@@ -169,6 +184,75 @@ export default function KontratForm({ initialData = null, onSubmit, onCancel, lo
             className={fieldClass('data_mbarimit')}
           />
           <FieldError field="data_mbarimit" />
+        </div>
+      </div>
+
+      {/* Pajisja (optional bundle) */}
+      <div>
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+          Pajisja (opsionale)
+        </label>
+        <select value={form.pajisje_id} onChange={set('pajisje_id')} className={fieldClass('pajisje_id')}>
+          <option value="">— Pa pajisje —</option>
+          {pajisjetData.map((p) => (
+            <option key={p.pajisje_id} value={p.pajisje_id}>
+              {p.marka} {p.emri} — {Number(p.cmimi_keste).toFixed(2)}€/muaj ({p.muajt_kestes} muaj)
+            </option>
+          ))}
+        </select>
+        {form.pajisje_id && (() => {
+          const sel = pajisjetData.find((p) => p.pajisje_id === parseInt(form.pajisje_id));
+          const paket = paketaData?.find((p) => p.paket_id === parseInt(form.paket_id));
+          if (!sel) return null;
+          const base = (parseFloat(paket?.cmimi_mujor) || 0) + parseFloat(sel.cmimi_keste);
+          const zbritja = (base * (parseInt(form.zbritja_perqindje) || 0)) / 100;
+          const total = base - zbritja;
+          return (
+            <div className="mt-2 bg-violet-50 rounded-xl px-4 py-3">
+              <div className="flex justify-between text-xs font-semibold text-violet-700">
+                <span>Paketa + Pajisje</span>
+                <span>{base.toFixed(2)}€/muaj</span>
+              </div>
+              {zbritja > 0 && (
+                <div className="flex justify-between text-xs font-semibold text-green-600 mt-0.5">
+                  <span>Zbritje {form.zbritja_perqindje}%</span>
+                  <span>−{zbritja.toFixed(2)}€</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-black text-violet-900 mt-1 border-t border-violet-200 pt-1">
+                <span>Total mujor</span>
+                <span>{total.toFixed(2)}€</span>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Zbritja + Kodi Promo */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            Zbritja (%)
+          </label>
+          <input
+            type="number" min={0} max={100}
+            value={form.zbritja_perqindje}
+            onChange={set('zbritja_perqindje')}
+            placeholder="0"
+            className={fieldClass('zbritja_perqindje')}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            Kodi Promo
+          </label>
+          <input
+            type="text"
+            value={form.kodi_promo}
+            onChange={set('kodi_promo')}
+            placeholder="UBT_STUDENT"
+            className={fieldClass('kodi_promo')}
+          />
         </div>
       </div>
 

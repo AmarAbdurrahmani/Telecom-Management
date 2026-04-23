@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import ClientAvatar from '../../components/ui/ClientAvatar.jsx';
 import SimSection from './SimSection.jsx';
+import TanGuard from '../../components/ui/TanGuard.jsx';
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color = 'slate' }) {
@@ -475,7 +476,11 @@ export default function KlientDetajet() {
       {tab === 'Kontratat' && <KontratatTab kontratat={kontratat} />}
       {tab === 'Faturat'   && <FaturatTab   kontratat={kontratat} />}
       {tab === 'Numrat'    && <NumratTab    kontratat={kontratat} />}
-      {tab === 'SIM/eSIM'  && <SimSection   klientId={id} />}
+      {tab === 'SIM/eSIM'  && (
+        <TanGuard klientId={id} label="SIM kartela (PIN/PUK)">
+          <SimSection klientId={id} />
+        </TanGuard>
+      )}
       {tab === 'Llogaria'  && (
         <LlogariaTab
           klient={klient}
