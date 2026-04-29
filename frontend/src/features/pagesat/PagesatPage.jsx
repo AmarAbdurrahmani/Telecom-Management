@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { pagesatApi } from '../../api/pagesatApi.js';
+import { stripeApi } from '../../api/stripeApi.js';
 import Modal from '../../components/ui/Modal.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -44,8 +45,9 @@ function fmt(d) {
 
 // ─── Pagese Form ──────────────────────────────────────────────────────────────
 function PageseForm({ initialData, onSubmit, onCancel, loading }) {
-  const [form, setForm]     = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
+  const [form, setForm]         = useState(EMPTY_FORM);
+  const [errors, setErrors]     = useState({});
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   const { data: faturat = [] } = useQuery({
     queryKey: ['pagesat-faturat'],
@@ -73,16 +75,40 @@ function PageseForm({ initialData, onSubmit, onCancel, loading }) {
     setErrors((p) => ({ ...p, [field]: undefined }));
   };
 
+  const isOnlineNew = form.metoda === 'online' && !initialData;
+
   async function handleSubmit(e) {
     e.preventDefault();
+    const payload = {
+      ...form,
+      fature_id: Number(form.fature_id),
+      shuma:     parseFloat(form.shuma),
+      referenca: form.referenca || null,
+      shenime:   form.shenime   || null,
+    };
+
+    // Online payment — redirect to Stripe Checkout instead of saving locally
+    if (isOnlineNew) {
+      if (!payload.fature_id || !payload.shuma) return;
+      setStripeLoading(true);
+      try {
+        const { data } = await stripeApi.createCheckoutSession({
+          fature_id: payload.fature_id,
+          shuma:     payload.shuma,
+        });
+        const url = data?.url;
+        if (!url) throw new Error('URL e sesionit mungon në përgjigjen e serverit.');
+        // Full page redirect — Stripe handles payment, webhook records the pagese on return
+        window.location.href = url;
+      } catch (err) {
+        setStripeLoading(false);
+        const msg = err.response?.data?.message || err.message || 'Gabim i panjohur.';
+        toast.error(`Stripe: ${msg}`);
+      }
+      return;
+    }
+
     try {
-      const payload = {
-        ...form,
-        fature_id: Number(form.fature_id),
-        shuma:     parseFloat(form.shuma),
-        referenca: form.referenca || null,
-        shenime:   form.shenime   || null,
-      };
       await onSubmit(payload);
     } catch (err) {
       const serverErrors = err.response?.data?.errors;
@@ -182,42 +208,78 @@ function PageseForm({ initialData, onSubmit, onCancel, loading }) {
         <FE field="metoda" />
       </div>
 
-      {/* Referenca */}
-      <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Referenca</label>
-        <input
-          type="text"
-          value={form.referenca}
-          onChange={set('referenca')}
-          placeholder="Nr. transaksioni, ref. bankare..."
-          className={fc('referenca')}
-        />
-        <FE field="referenca" />
-      </div>
+      {/* Referenca + Shenime — hidden for new online payments (Stripe fills them via webhook) */}
+      {!isOnlineNew && (
+        <>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Referenca</label>
+            <input
+              type="text"
+              value={form.referenca}
+              onChange={set('referenca')}
+              placeholder="Nr. transaksioni, ref. bankare..."
+              className={fc('referenca')}
+            />
+            <FE field="referenca" />
+          </div>
 
-      {/* Shenime */}
-      <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Shënime</label>
-        <textarea
-          value={form.shenime}
-          onChange={set('shenime')}
-          rows={2}
-          placeholder="Shënim opsional..."
-          className={`${fc('shenime')} resize-none`}
-        />
-        <FE field="shenime" />
-      </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Shënime</label>
+            <textarea
+              value={form.shenime}
+              onChange={set('shenime')}
+              rows={2}
+              placeholder="Shënim opsional..."
+              className={`${fc('shenime')} resize-none`}
+            />
+            <FE field="shenime" />
+          </div>
+        </>
+      )}
+
+      {/* Stripe info panel — shown only for new online payments */}
+      {isOnlineNew && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3.5 flex gap-3 items-start">
+          <svg className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+          <div>
+            <p className="text-xs font-bold text-violet-800">Pagesa nëpërmjet Stripe</p>
+            <p className="text-xs text-violet-600 mt-0.5">
+              Do të ridrejtoheni te faqja e sigurt e Stripe. Pasi pagesa të konfirmohet,
+              fatura do të shënohet automatikisht si <strong>E paguar</strong>.
+            </p>
+            <p className="text-[10px] text-violet-400 mt-1.5 font-mono">
+              Referenca dhe data vendosen automatikisht nga Stripe.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} disabled={loading}
+        <button type="button" onClick={onCancel} disabled={loading || stripeLoading}
           className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
           Anulo
         </button>
-        <button type="submit" disabled={loading}
-          className="flex-1 px-4 py-2.5 rounded-xl bg-[#111827] hover:bg-slate-700 text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-          {loading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-          {initialData ? 'Ruaj ndryshimet' : 'Regjistro pagesën'}
+        <button
+          type="submit"
+          disabled={loading || stripeLoading}
+          className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${
+            isOnlineNew
+              ? 'bg-violet-600 hover:bg-violet-700'
+              : 'bg-[#111827] hover:bg-slate-700'
+          }`}
+        >
+          {(loading || stripeLoading) && (
+            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          )}
+          {initialData
+            ? 'Ruaj ndryshimet'
+            : isOnlineNew
+              ? 'Vazhdo te Stripe →'
+              : 'Regjistro pagesën'
+          }
         </button>
       </div>
     </form>
@@ -246,6 +308,26 @@ export default function PagesatPage() {
   const [formOpen, setFormOpen]         = useState(false);
   const [editTarget, setEditTarget]     = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Handle Stripe redirect-back (success or cancel)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe_success') === '1') {
+      const fatureId = params.get('fature_id');
+      const shuma    = params.get('shuma');
+      const detail   = fatureId && shuma
+        ? ` Fatura #${fatureId} — ${Number(shuma).toFixed(2)}€`
+        : '';
+      toast.success(`Pagesa u krye me sukses nëpërmjet Stripe!${detail}`);
+      qc.invalidateQueries({ queryKey: ['pagesat'] });
+      qc.invalidateQueries({ queryKey: ['faturat'] });
+      qc.invalidateQueries({ queryKey: ['pagesat-faturat'] });
+      window.history.replaceState({}, '', '/pagesat');
+    } else if (params.get('stripe_cancel') === '1') {
+      toast.error('Pagesa u anulua. Mund të provoni përsëri.');
+      window.history.replaceState({}, '', '/pagesat');
+    }
+  }, [qc]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['pagesat', filters],

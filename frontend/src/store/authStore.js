@@ -1,26 +1,38 @@
 import { create } from 'zustand';
 
+// Read persisted token on module load (runs once when the app starts)
+const _storedToken = localStorage.getItem('auth_token') || null;
+
 /**
- * Auth state lives in memory only.
- * The access token is NEVER written to localStorage or sessionStorage.
- * On page reload, App.jsx performs a silent refresh via the HTTP-Only cookie.
+ * Auth state.
+ * - accessToken is persisted in localStorage so it survives page reloads.
+ * - On every app boot, App.jsx validates the stored token via GET /auth/me.
+ * - The HTTP-Only refresh cookie is kept as a fallback for when the
+ *   access token is expired (the 401 interceptor in axios.js handles this).
  */
 export const useAuthStore = create((set) => ({
-  accessToken:     null,
-  user:            null,
-  isAuthenticated: false,
-  isInitialized:   false, // true once the initial silent refresh attempt completes
+  accessToken:     _storedToken,
+  user:            null,            // hydrated during app init via /auth/me
+  isAuthenticated: !!_storedToken,  // true immediately if token exists
+  isInitialized:   false,           // true once the boot validation completes
 
-  setAuth: (token, user) =>
-    set({ accessToken: token, user, isAuthenticated: true }),
+  setAuth: (token, user) => {
+    if (token) localStorage.setItem('auth_token', token);
+    set({ accessToken: token, user, isAuthenticated: true });
+  },
 
-  setAccessToken: (token) =>
-    set({ accessToken: token, isAuthenticated: !!token }),
+  setAccessToken: (token) => {
+    if (token) localStorage.setItem('auth_token', token);
+    else        localStorage.removeItem('auth_token');
+    set({ accessToken: token, isAuthenticated: !!token });
+  },
 
   setUser: (user) => set({ user }),
 
-  clearAuth: () =>
-    set({ accessToken: null, user: null, isAuthenticated: false }),
+  clearAuth: () => {
+    localStorage.removeItem('auth_token');
+    set({ accessToken: null, user: null, isAuthenticated: false });
+  },
 
   setInitialized: () => set({ isInitialized: true }),
 }));
