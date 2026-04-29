@@ -5,9 +5,77 @@ namespace App\Http\Controllers;
 use App\Models\Fature;
 use App\Models\Pagese;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+
 
 class PageseController extends Controller
 {
+    public function createStripeSession(Request $request)
+    {
+        $validated = $request->validate([
+            'fature_id' => 'required|exists:faturat,fature_id',
+            'shuma'     => 'required|numeric|min:0.50',
+        ]);
+
+        $fature = Fature::with([
+            'kontrate:kontrate_id,numri_kontrates,klient_id',
+            'kontrate.klient:klient_id,emri,mbiemri',
+        ])->findOrFail($validated['fature_id']);
+
+        // ── Stripe secret key ────────────────────────────────────────────────
+        $secret = config('services.stripe.secret');
+        if (!$secret) {
+            return response()->json(['message' => 'Stripe nuk është konfiguruar (STRIPE_SECRET mungon).'], 500);
+        }
+
+        // ── Shuma: DUHET të jetë integer (cent) ─────────────────────────────
+        // 29.99 € → (int) round(29.99 * 100) = 2999  (jo 2998.9999...)
+        $shumaInCents = (int) round((float) $validated['shuma'] * 100);
+
+        // ── URL-të nga .env me fallback të sigurt ───────────────────────────
+        $frontendUrl = rtrim(
+            config('services.stripe.frontend_url', 'http://localhost:5173'),
+            '/'
+        );
+
+        $successUrl = $frontendUrl
+            . '/pagesat?stripe_success=1'
+            . '&fature_id=' . $fature->fature_id
+            . '&shuma='     . $validated['shuma'];
+
+        $cancelUrl = $frontendUrl . '/pagesat?stripe_cancel=1';
+
+        // ── Krijimi i sesionit me Http:: (pa Stripe SDK, pa curl_version) ───
+        $klientEmri = $fature->kontrate?->klient
+            ? "{$fature->kontrate->klient->emri} {$fature->kontrate->klient->mbiemri}"
+            : 'Klient';
+
+        $response = Http::withBasicAuth($secret, '')
+            ->asForm()
+            ->post('https://api.stripe.com/v1/checkout/sessions', [
+                'payment_method_types[]'                               => 'card',
+                'mode'                                                 => 'payment',
+                'line_items[0][price_data][currency]'                  => 'eur',
+                'line_items[0][price_data][unit_amount]'               => $shumaInCents,
+                'line_items[0][price_data][product_data][name]'        => "Fatura {$fature->periudha} — {$fature->kontrate?->numri_kontrates}",
+                'line_items[0][price_data][product_data][description]' => $klientEmri,
+                'line_items[0][quantity]'                              => 1,
+                'metadata[fature_id]'                                  => $fature->fature_id,
+                'metadata[shuma]'                                      => (string) $validated['shuma'],
+                'success_url'                                          => $successUrl,
+                'cancel_url'                                           => $cancelUrl,
+            ]);
+
+        if ($response->failed()) {
+            $error = $response->json('error.message', 'Gabim i panjohur nga Stripe.');
+            return response()->json(['message' => $error], 422);
+        }
+
+        return response()->json(['url' => $response->json('url')]);
+    }
+
+
+
     private const METODAT = ['kesh', 'banke', 'transfere', 'kartele', 'online', 'tjeter'];
 
     public function index(Request $request)
