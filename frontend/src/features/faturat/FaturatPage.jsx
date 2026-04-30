@@ -81,7 +81,7 @@ export default function FaturatPage() {
   };
 
   const handleFilterChange = (key, value) =>
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    setFilters((prev) => ({ ...prev, [key]: value, ...(key !== 'page' && { page: 1 }) }));
 
   const isMutating = createMutation.isPending || updateMutation.isPending;
 

@@ -18,6 +18,7 @@ import InfrastrukturaPage from '../features/infrastruktura/InfrastrukturaPage.js
 import PagesatPage from '../features/pagesat/PagesatPage.jsx';
 import PajisjetPage from '../features/pajisjet/PajisjetPage.jsx';
 import LifecyclePage from '../features/kontratat/LifecyclePage.jsx';
+import ChatPage from '../pages/ChatPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
 function FullPageSpinner() {
@@ -84,6 +85,7 @@ export default function AppRouter() {
         <Route path="pagesat"             element={<PagesatPage />} />
         <Route path="pajisjet"            element={<PajisjetPage />} />
         <Route path="lifecycle"           element={<LifecyclePage />} />
+        <Route path="chat"                element={<ChatPage />} />
       </Route>
 
       {/* ── Klient portal ── */}

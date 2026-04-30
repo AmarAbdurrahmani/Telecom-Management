@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import api from '../api/axios.js';
 import Spinner from '../components/ui/Spinner.jsx';
-import NetworkMap from '../components/ui/NetworkMap.jsx';
+import AntennaMap from '../components/ui/AntennaMap.jsx';
 
 // ─── Sparkline bars ───────────────────────────────────────────────────────────
 function Sparkline({ values = [], color = '#7c5cdb' }) {
@@ -328,27 +328,45 @@ export default function DashboardPage() {
             {SIM_TYPES.map((s, i) => <SimCard key={s.label} {...s} index={i} />)}
           </div>
         </div>
+
+        {/* Client type pie chart */}
+        <div className="bg-white border border-[#f0edf8] rounded-2xl p-5 animate-fade-up" style={{ animationDelay: '340ms' }}>
+          <p className="text-[14px] font-black text-slate-800 mb-4">Shperndarja e klienteve</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <Pie
+                data={(by_type ?? []).map(d => ({ name: d.lloji, value: d.total }))}
+                cx="50%"
+                cy="50%"
+                innerRadius={45}
+                outerRadius={70}
+                paddingAngle={3}
+                dataKey="value"
+              >
+                {(by_type ?? []).map((d, i) => (
+                  <Cell key={d.lloji} fill={['#7c5cdb', '#5b21b6', '#f59e0b'][i % 3]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n]} />
+              <Legend iconType="circle" iconSize={8} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* ══ RIGHT COLUMN ═════════════════════════════════════════════════════ */}
       <div className="flex flex-col gap-4">
 
-        {/* Network Map — react-leaflet + OpenCelliD */}
+        {/* Antenna Map — B&W Leaflet with 5G + LTE antennas */}
         <div className="bg-white border border-[#f0edf8] rounded-2xl overflow-hidden animate-fade-up" style={{ animationDelay: '120ms' }}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#f8f7fc]">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[13px] font-black text-slate-800">Harta e rrjetit</p>
+              <p className="text-[13px] font-black text-slate-800">Harta e antenave</p>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 bg-[#f8f7fc] px-2 py-0.5 rounded-full">Live · OpenCelliD</span>
+            <span className="text-[10px] font-bold text-slate-400 bg-[#f8f7fc] px-2 py-0.5 rounded-full">5G + LTE · Kosovo</span>
           </div>
-          <NetworkMap
-            center={[42.6629, 21.1655]}
-            zoom={13}
-            radiusM={2000}
-            locationLabel="42.66°N, 21.17°E — Prishtinë, KS"
-            height={300}
-          />
+          <AntennaMap height={420} />
         </div>
 
         {/* Quick actions */}

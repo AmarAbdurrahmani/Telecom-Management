@@ -265,7 +265,7 @@ export default function PajisjetPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['pajisjet'] }); toast.success('Pajisja u fshi.'); setDeleteTarget(null); },
   });
 
-  const setF = (k, v) => setFilters((p) => ({ ...p, [k]: v, page: 1 }));
+  const setF = (k, v) => setFilters((p) => ({ ...p, [k]: v, ...(k !== 'page' && { page: 1 }) }));
   const openEdit = (p) => { setEditTarget(p); setFormOpen(true); };
   const closeForm = () => { setFormOpen(false); setEditTarget(null); };
   const handleSubmit = async (payload) => {
