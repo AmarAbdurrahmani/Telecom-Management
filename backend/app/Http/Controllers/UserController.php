@@ -107,4 +107,14 @@ class UserController extends Controller
         User::findOrFail($id)->delete();
         return response()->json(['message' => 'Përdoruesi u fshi me sukses.']);
     }
+
+    public function staffList() {
+        return response()->json(
+            \App\Models\User::where('roli', '!=', 'klient')
+                ->where('aktiv', true)
+                ->select('id', 'name', 'roli')
+                ->orderBy('name')
+                ->get()
+        );
+    }
 }

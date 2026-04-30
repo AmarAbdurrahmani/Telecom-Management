@@ -19,6 +19,10 @@ class Kontrate extends Model
         'data_fillimit',
         'data_mbarimit',
         'statusi',
+        'auto_renew',
+        'renewal_months',
+        'renewed_at',
+        'renewed_by',
     ];
 
     protected $casts = [

@@ -21,6 +21,7 @@ class Fature extends Model
         'tatimi',
         'totali',
         'data_leshimit',
+        'data_skadimit',
         'data_pageses',
         'statusi',
     ];
@@ -31,6 +32,7 @@ class Fature extends Model
         'tatimi'       => 'float',
         'totali'       => 'float',
         'data_leshimit'=> 'date',
+        'data_skadimit'=> 'date',
         'data_pageses' => 'date',
     ];
 

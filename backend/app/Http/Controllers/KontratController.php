@@ -128,6 +128,68 @@ class KontratController extends Controller
         );
     }
 
+    public function renew(Request $request, $id) {
+        $kontrate = Kontrate::with(['klient', 'paket'])->findOrFail($id);
+
+        if ($kontrate->statusi === 'anulluar') {
+            return response()->json(['message' => 'Kontrata e anulluar nuk mund të rinovohet.'], 422);
+        }
+
+        $validated = $request->validate([
+            'muajt' => 'required|in:12,24',
+        ]);
+
+        $muajt = (int)$validated['muajt'];
+        $today = now()->startOfDay();
+
+        // New end date: from today or current end (whichever is later) + months
+        $base = ($kontrate->data_mbarimit && $kontrate->data_mbarimit->gt($today))
+            ? $kontrate->data_mbarimit
+            : $today;
+
+        $newEnd = $base->copy()->addMonths($muajt);
+
+        // Penalty for early renewal if >30 days remain
+        $ditetMbetur = $today->diffInDays($kontrate->data_mbarimit, false);
+        $penaliteti = 0;
+        if ($ditetMbetur > 30) {
+            $penaliteti = round($ditetMbetur / 30 * ($kontrate->paket->cmimi_mujor ?? 0) * 0.1, 2);
+        }
+
+        // Update contract
+        $kontrate->update([
+            'data_mbarimit' => $newEnd,
+            'statusi'       => 'aktive',
+            'auto_renew'    => true,
+            'renewal_months'=> $muajt,
+            'renewed_at'    => now(),
+            'renewed_by'    => auth()->id(),
+        ]);
+
+        // Generate renewal invoice
+        $periudha = $today->format('M Y') . ' – ' . $newEnd->format('M Y');
+        $total = ($kontrate->paket->cmimi_mujor ?? 0) * $muajt + $penaliteti;
+
+        $fature = \App\Models\Fature::create([
+            'kontrate_id'    => $kontrate->kontrate_id,
+            'periudha'       => "Rinovim {$muajt}M: {$periudha}",
+            'shuma_baze'     => round(($kontrate->paket->cmimi_mujor ?? 0) * $muajt, 2),
+            'shuma_shtese'   => round($penaliteti, 2),
+            'tatimi'         => 0,
+            'totali'         => round($total, 2),
+            'statusi'        => 'e_papaguar',
+            'data_leshimit'  => today(),
+            'data_pageses'   => null,
+        ]);
+
+        return response()->json([
+            'kontrate'  => $kontrate->fresh(['klient','paket']),
+            'fature'    => $fature,
+            'penaliteti'=> $penaliteti,
+            'new_end'   => $newEnd->format('Y-m-d'),
+        ]);
+    }
+
     /**
      * GET /kontratat-skaduese
      * Contracts expiring within 90 days — for lifecycle panel.
