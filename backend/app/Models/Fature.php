@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\HasHashId;
 use Illuminate\Database\Eloquent\Model;
 
 class Fature extends Model
 {
+    use HasHashId;
+
     protected $table      = 'faturat';
     protected $primaryKey = 'fature_id';
+    protected $appends    = ['hash_id'];
 
     protected $fillable = [
         'kontrate_id',

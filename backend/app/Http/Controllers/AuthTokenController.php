@@ -15,9 +15,10 @@ class AuthTokenController extends Controller
      * Returns the token so the agent can relay it to the client verbally/on-screen.
      * (In production: send via SMS/email to client only, never expose to agent.)
      */
-    public function generate(Request $request, $klientId)
+    public function generate(Request $request, $hash)
     {
-        $client = Client::findOrFail($klientId);
+        $klientId = Client::decodeHashId($hash) ?? abort(404);
+        $client   = Client::findOrFail($klientId);
 
         // Invalidate any existing active tokens for this client
         AuthToken::where('klient_id', $klientId)
@@ -47,8 +48,9 @@ class AuthTokenController extends Controller
      * POST /klientet/{id}/verifiko-tan
      * Agent submits the TAN that the client confirmed.
      */
-    public function verify(Request $request, $klientId)
+    public function verify(Request $request, $hash)
     {
+        $klientId = Client::decodeHashId($hash) ?? abort(404);
         $request->validate(['token' => 'required|string|size:6']);
 
         $authToken = AuthToken::where('klient_id', $klientId)
@@ -76,9 +78,10 @@ class AuthTokenController extends Controller
      * GET /klientet/{id}/tan-aktiv
      * Client portal: returns active TAN if any (for client to see their code).
      */
-    public function active($klientId)
+    public function active($hash)
     {
-        $token = AuthToken::where('klient_id', $klientId)
+        $klientId = Client::decodeHashId($hash) ?? abort(404);
+        $token    = AuthToken::where('klient_id', $klientId)
             ->where('perdorur', false)
             ->where('expires_at', '>', now())
             ->latest('token_id')

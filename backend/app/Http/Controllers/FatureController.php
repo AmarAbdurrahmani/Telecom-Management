@@ -78,15 +78,17 @@ class FatureController extends Controller
         return response()->json($fature, 201);
     }
 
-    public function show($id)
+    public function show($hash)
     {
+        $id = is_numeric($hash) ? (int)$hash : (Fature::decodeHashId($hash) ?? abort(404));
         return response()->json(
             Fature::with(['kontrate.klient', 'kontrate.paket'])->findOrFail($id)
         );
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $hash)
     {
+        $id     = is_numeric($hash) ? (int)$hash : (Fature::decodeHashId($hash) ?? abort(404));
         $fature = Fature::findOrFail($id);
 
         $validated = $request->validate([
@@ -107,8 +109,9 @@ class FatureController extends Controller
         return response()->json($fature);
     }
 
-    public function destroy($id)
+    public function destroy($hash)
     {
+        $id = is_numeric($hash) ? (int)$hash : (Fature::decodeHashId($hash) ?? abort(404));
         Fature::findOrFail($id)->delete();
         return response()->json(['message' => 'Fatura u fshi me sukses.']);
     }
@@ -117,9 +120,10 @@ class FatureController extends Controller
      * POST /klientet/{id}/gjenero-fature
      * Generate invoices for all active contracts of a client for a given month/year.
      */
-    public function generate(Request $request, $klientId)
+    public function generate(Request $request, $klientHash)
     {
-        $client = Client::with([
+        $klientId = Client::decodeHashId($klientHash) ?? abort(404);
+        $client   = Client::with([
             'kontratat' => fn($q) => $q->where('statusi', 'aktive')
                 ->with(['paket', 'sherbimetShtesa']),
         ])->findOrFail($klientId);

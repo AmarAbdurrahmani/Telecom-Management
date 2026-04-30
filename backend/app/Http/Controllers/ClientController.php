@@ -91,15 +91,17 @@ class ClientController extends Controller
         return response()->json($client->load('user:id,email,aktiv,last_login_at'), 201);
     }
 
-    public function show($id)
+    public function show($hash)
     {
+        $id = Client::decodeHashId($hash) ?? abort(404);
         return response()->json(
             Client::with('user:id,email,aktiv,last_login_at')->findOrFail($id)
         );
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $hash)
     {
+        $id     = Client::decodeHashId($hash) ?? abort(404);
         $client = Client::findOrFail($id);
 
         $validated = $request->validate([
@@ -172,8 +174,9 @@ class ClientController extends Controller
         return response()->json($client->load('user:id,email,aktiv,last_login_at'));
     }
 
-    public function destroy($id)
+    public function destroy($hash)
     {
+        $id     = Client::decodeHashId($hash) ?? abort(404);
         $client = Client::with('user')->findOrFail($id);
         // Also delete linked user if they have klient role
         if ($client->user && $client->user->roli === 'klient') {
@@ -183,8 +186,9 @@ class ClientController extends Controller
         return response()->json(['message' => 'Klienti u fshi me sukses.']);
     }
 
-    public function detail($id)
+    public function detail($hash)
     {
+        $id     = Client::decodeHashId($hash) ?? abort(404);
         $client = Client::with('user:id,email,aktiv,roli,last_login_at,created_at')->findOrFail($id);
 
         $kontratat = $client->kontratat()

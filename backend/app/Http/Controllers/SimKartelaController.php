@@ -12,8 +12,9 @@ use Illuminate\Support\Str;
 class SimKartelaController extends Controller
 {
     /** GET /klientet/{id}/sim-kartela */
-    public function indexByKlient($id)
+    public function indexByKlient($hash)
     {
+        $id = Client::decodeHashId($hash) ?? abort(404);
         Client::findOrFail($id);
 
         $sims = SimKartela::where('klient_id', $id)
@@ -43,8 +44,9 @@ class SimKartelaController extends Controller
     }
 
     /** POST /klientet/{id}/sim-kartela */
-    public function store(Request $request, $id)
+    public function store(Request $request, $hash)
     {
+        $id     = Client::decodeHashId($hash) ?? abort(404);
         $client = Client::findOrFail($id);
 
         $validated = $request->validate([

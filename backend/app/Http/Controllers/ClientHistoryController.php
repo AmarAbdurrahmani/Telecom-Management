@@ -12,9 +12,10 @@ class ClientHistoryController extends Controller
      * GET /klientet/{id}/historia
      * Returns paginated history for a client, newest first.
      */
-    public function index(Request $request, $id)
+    public function index(Request $request, $hash)
     {
-        Client::findOrFail($id); // 404 if not found
+        $id = Client::decodeHashId($hash) ?? abort(404);
+        Client::findOrFail($id);
 
         $paginator = ClientHistory::where('klient_id', $id)
             ->with('punonjes:id,name')

@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\HasHashId;
 use Illuminate\Database\Eloquent\Model;
 
 class Client extends Model
 {
+    use HasHashId;
+
     protected $table = 'clients';
     protected $primaryKey = 'klient_id';
+    protected $appends = ['hash_id'];
 
     public function kontratat()
     {
@@ -22,6 +26,8 @@ class Client extends Model
         'email',
         'telefoni',
         'adresa',
+        'latitude',
+        'longitude',
         'lloji_klientit',
         'statusi',
         'data_regjistrimit',
