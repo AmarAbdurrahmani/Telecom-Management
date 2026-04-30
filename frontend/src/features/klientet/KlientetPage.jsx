@@ -74,7 +74,7 @@ export default function KlientetPage() {
 
   const handleFormSubmit = async (formData) => {
     if (editingKlient) {
-      await updateMutation.mutateAsync({ id: editingKlient.klient_id, payload: formData });
+      await updateMutation.mutateAsync({ id: editingKlient.hash_id, payload: formData });
     } else {
       await createMutation.mutateAsync(formData);
     }
@@ -224,7 +224,7 @@ export default function KlientetPage() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={() => deleteMutation.mutate(deleteTarget?.klient_id)}
+        onConfirm={() => deleteMutation.mutate(deleteTarget?.hash_id)}
         title="Fshi klientin?"
         message={`A jeni të sigurt që doni të fshini ${deleteTarget?.emri_plote ?? ''}? Ky veprim nuk mund të zhbëhet.`}
         confirmLabel="Po, fshi"

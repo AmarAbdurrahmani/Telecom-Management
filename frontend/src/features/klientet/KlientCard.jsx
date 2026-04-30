@@ -15,7 +15,7 @@ export default function KlientCard({ klient, onEdit, onDelete }) {
   return (
     <div
       className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
-      onClick={() => navigate(`/klientet/${klient.klient_id}`)}
+      onClick={() => navigate(`/klientet/${klient.hash_id}`)}
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-5">

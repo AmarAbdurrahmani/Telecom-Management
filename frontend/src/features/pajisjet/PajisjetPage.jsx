@@ -8,15 +8,47 @@ import Spinner from '../../components/ui/Spinner.jsx';
 
 // ─── Brand colours ────────────────────────────────────────────────────────────
 const BRAND_COLORS = {
-  Apple:    'bg-slate-900 text-white',
-  Samsung:  'bg-blue-600  text-white',
-  Google:   'bg-red-500   text-white',
-  Xiaomi:   'bg-orange-500 text-white',
-  Nothing:  'bg-slate-800 text-white',
-  Honor:    'bg-red-700   text-white',
-  Motorola: 'bg-blue-800  text-white',
-  ZTE:      'bg-green-700 text-white',
+  Apple:    { bg: 'bg-[#1c1c1e]',   text: 'text-white', hex: '#1c1c1e',   screen: '#2c2c2e' },
+  Samsung:  { bg: 'bg-[#1428a0]',   text: 'text-white', hex: '#1428a0',   screen: '#1a3fbf' },
+  Google:   { bg: 'bg-[#4285f4]',   text: 'text-white', hex: '#4285f4',   screen: '#5b9cf6' },
+  Xiaomi:   { bg: 'bg-[#ff6900]',   text: 'text-white', hex: '#ff6900',   screen: '#ff8c38' },
+  Nothing:  { bg: 'bg-[#1a1a1a]',   text: 'text-white', hex: '#1a1a1a',   screen: '#2e2e2e' },
+  Honor:    { bg: 'bg-[#c00]',       text: 'text-white', hex: '#cc0000',   screen: '#e02020' },
+  Motorola: { bg: 'bg-[#003087]',   text: 'text-white', hex: '#003087',   screen: '#004ab3' },
+  ZTE:      { bg: 'bg-[#006b3f]',   text: 'text-white', hex: '#006b3f',   screen: '#008c52' },
 };
+
+// ─── Phone SVG illustration ───────────────────────────────────────────────────
+function PhoneIllustration({ hex = '#7c5cdb', screen = '#a78bfa' }) {
+  return (
+    <svg viewBox="0 0 60 100" className="w-14 h-24 drop-shadow-lg" fill="none">
+      {/* Body */}
+      <rect x="4" y="2" width="52" height="96" rx="10" fill={hex} />
+      {/* Side button */}
+      <rect x="54" y="28" width="3" height="14" rx="1.5" fill={hex} opacity="0.6" />
+      {/* Volume buttons */}
+      <rect x="3" y="24" width="3" height="10" rx="1.5" fill={hex} opacity="0.6" />
+      <rect x="3" y="38" width="3" height="10" rx="1.5" fill={hex} opacity="0.6" />
+      {/* Screen */}
+      <rect x="8" y="10" width="44" height="76" rx="6" fill={screen} />
+      {/* Notch/pill */}
+      <rect x="20" y="13" width="20" height="5" rx="2.5" fill={hex} opacity="0.7" />
+      {/* Status bar lines */}
+      <rect x="14" y="24" width="12" height="2" rx="1" fill="white" opacity="0.2" />
+      <rect x="34" y="24" width="8" height="2" rx="1" fill="white" opacity="0.2" />
+      {/* App grid */}
+      {[0,1,2].map((row) =>
+        [0,1,2,3].map((col) => (
+          <rect key={`${row}-${col}`}
+            x={14 + col * 10} y={32 + row * 10} width="7" height="7" rx="2"
+            fill="white" opacity="0.15" />
+        ))
+      )}
+      {/* Home bar */}
+      <rect x="22" y="80" width="16" height="3" rx="1.5" fill="white" opacity="0.4" />
+    </svg>
+  );
+}
 
 const EMPTY_FORM = {
   emri: '', marka: '', cmimi_cash: '', cmimi_keste: '',
@@ -27,17 +59,22 @@ function fmt(n) { return Number(n).toFixed(2); }
 
 // ─── Device Card ──────────────────────────────────────────────────────────────
 function PajisjeCard({ p, onEdit, onDelete }) {
-  const brandClass = BRAND_COLORS[p.marka] ?? 'bg-violet-600 text-white';
+  const brand      = BRAND_COLORS[p.marka] ?? { bg: 'bg-[#7c5cdb]', text: 'text-white', hex: '#7c5cdb', screen: '#a78bfa' };
   const totalKeste = fmt(p.cmimi_keste * p.muajt_kestes);
 
   return (
-    <div className={`bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm ${!p.disponueshme ? 'opacity-60' : ''}`}>
-      {/* Brand header */}
-      <div className={`${brandClass} px-5 py-3 flex items-center justify-between`}>
-        <span className="text-xs font-black uppercase tracking-widest">{p.marka}</span>
-        {!p.disponueshme && (
-          <span className="text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded-full">Joaktive</span>
-        )}
+    <div className={`bg-white border border-[#f0edf8] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ${!p.disponueshme ? 'opacity-60' : ''}`}>
+      {/* Brand header with phone illustration */}
+      <div className={`${brand.bg} px-5 pt-4 pb-0 flex items-end justify-between overflow-hidden`} style={{ minHeight: 120 }}>
+        <div className="pb-4">
+          <span className={`text-[11px] font-black uppercase tracking-widest ${brand.text} opacity-80`}>{p.marka}</span>
+          {!p.disponueshme && (
+            <span className="ml-2 text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded-full text-white">Joaktive</span>
+          )}
+        </div>
+        <div className="translate-y-2">
+          <PhoneIllustration hex={brand.hex} screen={brand.screen} />
+        </div>
       </div>
 
       <div className="p-5">
@@ -46,14 +83,14 @@ function PajisjeCard({ p, onEdit, onDelete }) {
 
         {/* Pricing */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-center">
+          <div className="bg-[#f8f7fc] rounded-xl px-3 py-2.5 text-center">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Cash</p>
             <p className="text-lg font-black text-slate-900">{fmt(p.cmimi_cash)}€</p>
           </div>
-          <div className="bg-violet-50 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-0.5">Këste</p>
-            <p className="text-lg font-black text-violet-700">{fmt(p.cmimi_keste)}€<span className="text-xs font-semibold">/muaj</span></p>
-            <p className="text-[10px] text-violet-400">{p.muajt_kestes} muaj · {totalKeste}€</p>
+          <div className="bg-[#ede9f7] rounded-xl px-3 py-2.5 text-center">
+            <p className="text-[10px] font-bold text-[#7c5cdb] uppercase tracking-wider mb-0.5">Këste</p>
+            <p className="text-lg font-black text-[#7c5cdb]">{fmt(p.cmimi_keste)}€<span className="text-xs font-semibold">/muaj</span></p>
+            <p className="text-[10px] text-[#7c5cdb]/60">{p.muajt_kestes} muaj · {totalKeste}€</p>
           </div>
         </div>
 
@@ -239,16 +276,13 @@ export default function PajisjetPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900">Pajisjet</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {pagination?.total != null ? `${pagination.total} pajisje në katalog` : 'Katalogu i telefonave dhe pajisjeve'}
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <p className="text-[13px] text-slate-400 font-medium">
+          {pagination?.total != null ? `${pagination.total} pajisje në katalog` : 'Katalogu i telefonave dhe pajisjeve'}
+        </p>
         <button onClick={() => { setEditTarget(null); setFormOpen(true); }}
-          className="inline-flex items-center gap-2 bg-[#111827] hover:bg-slate-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-[#7c5cdb] to-[#a78bfa] hover:from-[#6d4fcb] hover:to-[#9370f0] text-white text-[13px] font-bold px-4 py-2.5 rounded-xl shadow-[0_2px_12px_rgba(124,92,219,0.35)] transition-all">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
           Shto pajisje
@@ -263,10 +297,10 @@ export default function PajisjetPage() {
           </svg>
           <input type="text" placeholder="Kërko model, markë..." value={filters.search}
             onChange={(e) => setF('search', e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent" />
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#f0edf8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cdb]/30 focus:border-[#7c5cdb]/40" />
         </div>
         <select value={filters.disponueshme} onChange={(e) => setF('disponueshme', e.target.value)}
-          className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white">
+          className="bg-white border border-[#f0edf8] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cdb]/30">
           <option value="">Të gjitha</option>
           <option value="1">Disponueshme</option>
           <option value="0">Joaktive</option>

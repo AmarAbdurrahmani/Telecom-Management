@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
 @tailwind components;
@@ -9,7 +10,7 @@
     @apply box-border;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-[#ede9f7] text-slate-900 antialiased;
     font-family: 'Inter', system-ui, sans-serif;
   }
 }
@@ -19,6 +20,7 @@
     font-weight: 900;
   }
 
+  /* ── Scrollbar hide ───────────────────────────────── */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -26,4 +28,29 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* ── Stagger fade-up animation ────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease forwards;
+  opacity: 0;
+}
+
+/* ── Speedometer arc animation ────────────────────────── */
+@keyframes arc-fill {
+  from { stroke-dashoffset: 251; }
+}
+.animate-arc {
+  animation: arc-fill 1.2s ease-out forwards;
 }

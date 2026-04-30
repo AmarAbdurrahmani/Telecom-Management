@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import ClientAvatar from '../../components/ui/ClientAvatar.jsx';
 import SimSection from './SimSection.jsx';
 import TanGuard from '../../components/ui/TanGuard.jsx';
+import NetworkCoverage from './NetworkCoverage.jsx';
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color = 'slate' }) {
@@ -428,7 +429,8 @@ export default function KlientDetajet() {
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500 font-medium">
               <span>{klient.email}</span>
               <span>{klient.telefoni}</span>
-              <span>ID: {klient.numri_personal}</span>
+              <span>NID: {klient.numri_personal}</span>
+              <span className="font-mono text-[#7c5cdb] font-black">#{klient.hash_id}</span>
               {klient.adresa && <span>{klient.adresa}</span>}
               <span>Regjistruar: {fmt(klient.data_regjistrimit)}</span>
               {klient.data_faturimit && <span>Faturim: data {klient.data_faturimit}</span>}
@@ -456,6 +458,11 @@ export default function KlientDetajet() {
         <StatCard label="Shërbime"        value={summary.sherbimet_shtesa}             color="slate"  />
         <StatCard label="Borxhi"          value={`${summary.total_borxh.toFixed(2)}€`} sub="i papaguar" color={summary.total_borxh > 0 ? 'red' : 'green'} />
         <StatCard label="Total Paguar"    value={`${summary.total_paguar.toFixed(2)}€`}               color="green"  />
+      </div>
+
+      {/* Network Coverage */}
+      <div className="mb-4">
+        <NetworkCoverage hashId={id} klient={klient} />
       </div>
 
       {/* Tabs */}
