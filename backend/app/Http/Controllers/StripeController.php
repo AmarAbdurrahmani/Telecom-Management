@@ -163,6 +163,71 @@ class StripeController extends Controller
         return false;
     }
 
+    /**
+     * Portal Stripe Checkout — called by klient role from their own portal.
+     * Validates that the invoice belongs to the requesting client.
+     *
+     * POST /api/portal/stripe/checkout  (auth:sanctum, any role)
+     * Body: { fature_id: int, shuma: float }
+     */
+    public function createPortalCheckoutSession(Request $request)
+    {
+        $validated = $request->validate([
+            'fature_id' => 'required|exists:faturat,fature_id',
+            'shuma'     => 'required|numeric|min:0.01',
+        ]);
+
+        $fature = Fature::with([
+            'kontrate:kontrate_id,numri_kontrates,klient_id',
+            'kontrate.klient:klient_id,emri,mbiemri,user_id',
+        ])->findOrFail($validated['fature_id']);
+
+        // Ownership check: klient can only pay their own invoices
+        $user = $request->user();
+        if ($user->roli === 'klient') {
+            $klient = $user->klient;
+            if (!$klient || $fature->kontrate?->klient_id !== $klient->klient_id) {
+                return response()->json(['message' => 'Nuk keni qasje në këtë faturë.'], 403);
+            }
+        }
+
+        $secret       = config('services.stripe.secret');
+        $frontendUrl  = rtrim(config('services.stripe.frontend_url'), '/');
+        $shumaInCents = (int) round((float) $validated['shuma'] * 100);
+
+        $klientEmri = $fature->kontrate?->klient
+            ? "{$fature->kontrate->klient->emri} {$fature->kontrate->klient->mbiemri}"
+            : 'Klient';
+
+        $productName = "Fatura {$fature->periudha}";
+        if ($fature->kontrate?->numri_kontrates) {
+            $productName .= " — {$fature->kontrate->numri_kontrates}";
+        }
+
+        $response = Http::withBasicAuth($secret, '')
+            ->asForm()
+            ->post(self::STRIPE_API . '/checkout/sessions', [
+                'payment_method_types[]'                               => 'card',
+                'mode'                                                 => 'payment',
+                'line_items[0][price_data][currency]'                  => 'eur',
+                'line_items[0][price_data][unit_amount]'               => $shumaInCents,
+                'line_items[0][price_data][product_data][name]'        => $productName,
+                'line_items[0][price_data][product_data][description]' => $klientEmri,
+                'line_items[0][quantity]'                              => 1,
+                'metadata[fature_id]'                                  => $fature->fature_id,
+                'metadata[shuma]'                                      => (string) $validated['shuma'],
+                'success_url'                                          => "{$frontendUrl}/portal?stripe_success=1",
+                'cancel_url'                                           => "{$frontendUrl}/portal?stripe_cancel=1",
+            ]);
+
+        if ($response->failed()) {
+            $error = $response->json('error.message', 'Gabim i panjohur nga Stripe.');
+            return response()->json(['message' => $error], 422);
+        }
+
+        return response()->json(['checkout_url' => $response->json('url')]);
+    }
+
     /** Keep invoice status in sync after payment recorded. */
     private function syncFatureStatusi(int $fatureId): void
     {
