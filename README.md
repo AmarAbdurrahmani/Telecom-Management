@@ -48,7 +48,7 @@ Agent: Handling subscriber registrations and complaints.
 🚀 Installation & Setup
 1. Clone the Repository
 Bash
-git clone https://github.com/amar-abdurrahmani/telekom-ms.git
+git clone https://github.com/AmarAbdurrahmani/Telecom-Management.git
 cd telekom-ms
 2. Backend Configuration (Laravel)
 Bash
