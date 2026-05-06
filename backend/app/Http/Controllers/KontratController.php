@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ContractApprovedMail;
 use App\Models\Kontrate;
 use App\Models\Client;
 use App\Models\Paket;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class KontratController extends Controller
 {
@@ -70,6 +72,10 @@ class KontratController extends Controller
         $kontrate = Kontrate::create($validated);
         $kontrate->load(['klient', 'paket', 'pajisje']);
 
+        if ($validated['statusi'] === 'aktive' && $kontrate->klient?->email) {
+            Mail::to($kontrate->klient->email)->send(new ContractApprovedMail($kontrate));
+        }
+
         return response()->json($kontrate, 201);
     }
 
@@ -96,8 +102,18 @@ class KontratController extends Controller
             'statusi'           => 'sometimes|required|in:aktive,e_skaduar,anulluar',
         ]);
 
+        $oldStatus = $kontrate->statusi;
         $kontrate->update($validated);
         $kontrate->load(['klient', 'paket', 'pajisje']);
+
+        if (
+            isset($validated['statusi']) &&
+            $validated['statusi'] === 'aktive' &&
+            $oldStatus !== 'aktive' &&
+            $kontrate->klient?->email
+        ) {
+            Mail::to($kontrate->klient->email)->send(new ContractApprovedMail($kontrate));
+        }
 
         return response()->json($kontrate);
     }
@@ -156,6 +172,8 @@ class KontratController extends Controller
             $penaliteti = round($ditetMbetur / 30 * ($kontrate->paket->cmimi_mujor ?? 0) * 0.1, 2);
         }
 
+        $oldStatus = $kontrate->statusi;
+
         // Update contract
         $kontrate->update([
             'data_mbarimit' => $newEnd,
@@ -165,6 +183,10 @@ class KontratController extends Controller
             'renewed_at'    => now(),
             'renewed_by'    => auth()->id(),
         ]);
+
+        if ($oldStatus !== 'aktive' && $kontrate->klient?->email) {
+            Mail::to($kontrate->klient->email)->send(new ContractApprovedMail($kontrate->fresh(['klient','paket'])));
+        }
 
         // Generate renewal invoice
         $periudha = $today->format('M Y') . ' – ' . $newEnd->format('M Y');

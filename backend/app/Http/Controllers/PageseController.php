@@ -76,7 +76,7 @@ class PageseController extends Controller
 
 
 
-    private const METODAT = ['kesh', 'banke', 'transfere', 'kartele', 'online', 'tjeter'];
+    private const METODAT = ['cash', 'online', 'transfer'];
 
     public function index(Request $request)
     {
