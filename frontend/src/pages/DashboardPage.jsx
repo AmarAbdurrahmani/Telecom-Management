@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import api from '../api/axios.js';
 import Spinner from '../components/ui/Spinner.jsx';
-import AntennaMap from '../components/ui/AntennaMap.jsx';
+import NetworkMap from '../components/ui/NetworkMap.jsx';
 
 // ─── Sparkline bars ───────────────────────────────────────────────────────────
 function Sparkline({ values = [], color = '#7c5cdb' }) {
@@ -357,16 +357,16 @@ export default function DashboardPage() {
       {/* ══ RIGHT COLUMN ═════════════════════════════════════════════════════ */}
       <div className="flex flex-col gap-4">
 
-        {/* Antenna Map — B&W Leaflet with 5G + LTE antennas */}
+        {/* Network coverage map — Kosovo */}
         <div className="bg-white border border-[#f0edf8] rounded-2xl overflow-hidden animate-fade-up" style={{ animationDelay: '120ms' }}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#f8f7fc]">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[13px] font-black text-slate-800">Harta e antenave</p>
+              <p className="text-[13px] font-black text-slate-800">Harta e rrjetit</p>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 bg-[#f8f7fc] px-2 py-0.5 rounded-full">5G + LTE · Kosovo</span>
+            <span className="text-[10px] font-bold text-slate-400 bg-[#f8f7fc] px-2 py-0.5 rounded-full">5G + 4G · Kosovë</span>
           </div>
-          <AntennaMap height={420} />
+          <NetworkMap />
         </div>
 
         {/* Quick actions */}

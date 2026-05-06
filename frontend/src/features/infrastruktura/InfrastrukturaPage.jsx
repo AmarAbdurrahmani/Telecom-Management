@@ -276,7 +276,7 @@ export default function InfrastrukturaPage() {
     },
   });
 
-  const setFilter = (key, val) => setFilters((p) => ({ ...p, [key]: val, page: 1 }));
+  const setFilter = (key, val) => setFilters((p) => ({ ...p, [key]: val, ...(key !== 'page' && { page: 1 }) }));
 
   const openCreate = () => { setEditTarget(null); setFormOpen(true); };
   const openEdit   = (item) => { setEditTarget(item); setFormOpen(true); };

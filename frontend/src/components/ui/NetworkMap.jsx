@@ -1,10 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { useQuery } from '@tanstack/react-query';
-import api from '../../api/axios.js';
 
-// ─── Fix Leaflet's broken default icon path under Vite ────────────────────────
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -12,219 +9,195 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// ─── Custom tower icon ────────────────────────────────────────────────────────
-function makeTowerIcon(radio) {
-  const isNR  = radio === 'NR';   // 5G
-  const color = isNR ? '#7c5cdb' : '#3b82f6';
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="32" height="42">
-      <defs>
-        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.25"/>
-        </filter>
-      </defs>
-      <!-- Pin body -->
-      <path d="M16 0 C7.2 0 0 7.2 0 16 C0 24.8 16 42 16 42 C16 42 32 24.8 32 16 C32 7.2 24.8 0 16 0Z"
-            fill="${color}" filter="url(#shadow)"/>
-      <!-- Tower icon inside -->
-      <g transform="translate(8, 6)" fill="white" opacity="0.95">
-        <!-- Antenna mast -->
-        <rect x="9" y="3" width="2" height="11" rx="1"/>
-        <!-- Crossbars -->
-        <rect x="5" y="5"  width="10" height="1.5" rx="0.75"/>
-        <rect x="6" y="8"  width="8"  height="1.5" rx="0.75"/>
-        <rect x="7" y="11" width="6"  height="1.5" rx="0.75"/>
-        <!-- Base legs -->
-        <line x1="10" y1="14" x2="4"  y2="18" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="10" y1="14" x2="16" y2="18" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        <rect x="3" y="17" width="14" height="1.5" rx="0.75"/>
-      </g>
-      ${isNR ? `<circle cx="24" cy="6" r="5" fill="#10b981"/>
-               <text x="24" y="9.5" text-anchor="middle" font-size="6" font-weight="bold" fill="white">5G</text>` : ''}
-    </svg>
-  `;
-
+function makeDotIcon(color) {
   return L.divIcon({
     className: '',
-    html: svg,
-    iconSize:   [32, 42],
-    iconAnchor: [16, 42],
-    popupAnchor:[0, -40],
+    html: `<div style="width:13px;height:13px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.4)"></div>`,
+    iconSize:   [13, 13],
+    iconAnchor: [6, 6],
+    popupAnchor:[0, -10],
   });
 }
 
-// ─── Centre marker icon (purple pin) ─────────────────────────────────────────
-const CENTER_ICON = L.divIcon({
-  className: '',
-  html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="24" height="32">
-    <path d="M12 0C5.4 0 0 5.4 0 12 0 18.6 12 32 12 32S24 18.6 24 12C24 5.4 18.6 0 12 0Z"
-          fill="#7c5cdb" opacity="0.9"/>
-    <circle cx="12" cy="12" r="4" fill="white"/>
-  </svg>`,
-  iconSize:   [24, 32],
-  iconAnchor: [12, 32],
-  popupAnchor:[0, -32],
-});
+const ICON_5G = makeDotIcon('#7c5cdb');
+const ICON_4G = makeDotIcon('#f97316');
 
-// ─── Haversine distance (km) ──────────────────────────────────────────────────
-function distKm(lat1, lon1, lat2, lon2) {
-  const R    = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a    = Math.sin(dLat / 2) ** 2
-             + Math.cos((lat1 * Math.PI) / 180)
-             * Math.cos((lat2 * Math.PI) / 180)
-             * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.asin(Math.sqrt(a));
-}
+// tier 1 = visible at any zoom
+// tier 2 = visible at zoom >= 9
+// tier 3 = visible at zoom >= 11
+const MARKERS = [
+  // ── Prishtinë ──────────────────────────────────────────────────────────────
+  { lat: 42.6629, lon: 21.1655, type: '5G', city: 'Prishtinë',  name: 'Qendra',          tier: 1 },
+  { lat: 42.6511, lon: 21.1808, type: '5G', city: 'Prishtinë',  name: 'Ulpiana',          tier: 2 },
+  { lat: 42.6705, lon: 21.1820, type: '5G', city: 'Prishtinë',  name: 'Dardania',         tier: 2 },
+  { lat: 42.6760, lon: 21.1590, type: '5G', city: 'Prishtinë',  name: 'Bregu i Diellit',  tier: 3 },
+  { lat: 42.6830, lon: 21.1700, type: '5G', city: 'Prishtinë',  name: 'Sunny Hill',       tier: 3 },
+  { lat: 42.6580, lon: 21.1480, type: '4G', city: 'Prishtinë',  name: 'Dragodan',         tier: 3 },
+  { lat: 42.6450, lon: 21.1870, type: '4G', city: 'Prishtinë',  name: 'Lakrishte',        tier: 3 },
+  { lat: 42.6620, lon: 21.2000, type: '4G', city: 'Prishtinë',  name: 'Kodra e Trimave',  tier: 3 },
+  { lat: 42.6480, lon: 21.1500, type: '4G', city: 'Prishtinë',  name: 'Taukbashçe',       tier: 3 },
 
-// ─── Recenter helper (reacts to prop changes) ─────────────────────────────────
-function MapCentre({ center, zoom }) {
-  const map = useMap();
-  useEffect(() => { map.setView(center, zoom); }, [center, zoom, map]);
+  // ── Fushë Kosovë ───────────────────────────────────────────────────────────
+  { lat: 42.6625, lon: 21.0947, type: '5G', city: 'Fushë Kosovë', name: 'Qendra',         tier: 2 },
+  { lat: 42.6500, lon: 21.0800, type: '4G', city: 'Fushë Kosovë', name: 'Jugore',         tier: 3 },
+
+  // ── Lipjan ─────────────────────────────────────────────────────────────────
+  { lat: 42.5219, lon: 21.1219, type: '5G', city: 'Lipjan',     name: 'Qendra',           tier: 2 },
+  { lat: 42.5100, lon: 21.1300, type: '4G', city: 'Lipjan',     name: 'Jugore',           tier: 3 },
+
+  // ── Drenas ─────────────────────────────────────────────────────────────────
+  { lat: 42.6264, lon: 20.8769, type: '4G', city: 'Drenas',     name: 'Qendra',           tier: 2 },
+
+  // ── Mitrovicë ──────────────────────────────────────────────────────────────
+  { lat: 42.8914, lon: 20.8660, type: '5G', city: 'Mitrovicë',  name: 'Qendra',           tier: 1 },
+  { lat: 42.8800, lon: 20.8750, type: '4G', city: 'Mitrovicë',  name: 'Jugore',           tier: 2 },
+  { lat: 42.9020, lon: 20.8550, type: '4G', city: 'Mitrovicë',  name: 'Veriore',          tier: 2 },
+  { lat: 42.9200, lon: 20.8700, type: '4G', city: 'Mitrovicë',  name: 'Periferia',        tier: 3 },
+
+  // ── Vushtrri ───────────────────────────────────────────────────────────────
+  { lat: 42.8233, lon: 20.9672, type: '4G', city: 'Vushtrri',   name: 'Qendra',           tier: 2 },
+  { lat: 42.8100, lon: 20.9500, type: '4G', city: 'Vushtrri',   name: 'Industria',        tier: 3 },
+
+  // ── Skenderaj ──────────────────────────────────────────────────────────────
+  { lat: 42.7450, lon: 20.7875, type: '4G', city: 'Skenderaj',  name: 'Qendra',           tier: 2 },
+
+  // ── Podujevë ───────────────────────────────────────────────────────────────
+  { lat: 42.9111, lon: 21.1897, type: '4G', city: 'Podujevë',   name: 'Qendra',           tier: 2 },
+
+  // ── Istog ──────────────────────────────────────────────────────────────────
+  { lat: 42.7811, lon: 20.4872, type: '4G', city: 'Istog',      name: 'Qendra',           tier: 2 },
+
+  // ── Pejë ───────────────────────────────────────────────────────────────────
+  { lat: 42.6597, lon: 20.2889, type: '5G', city: 'Pejë',       name: 'Qendra',           tier: 1 },
+  { lat: 42.6500, lon: 20.3000, type: '4G', city: 'Pejë',       name: 'Jugore',           tier: 2 },
+  { lat: 42.6700, lon: 20.2800, type: '4G', city: 'Pejë',       name: 'Veriore',          tier: 2 },
+  { lat: 42.6650, lon: 20.3200, type: '5G', city: 'Pejë',       name: 'Lindje',           tier: 3 },
+
+  // ── Klinë ──────────────────────────────────────────────────────────────────
+  { lat: 42.6228, lon: 20.5769, type: '4G', city: 'Klinë',      name: 'Qendra',           tier: 2 },
+
+  // ── Gjakovë ────────────────────────────────────────────────────────────────
+  { lat: 42.3800, lon: 20.4300, type: '5G', city: 'Gjakovë',    name: 'Qendra',           tier: 1 },
+  { lat: 42.3700, lon: 20.4400, type: '4G', city: 'Gjakovë',    name: 'Jugore',           tier: 2 },
+  { lat: 42.3900, lon: 20.4200, type: '4G', city: 'Gjakovë',    name: 'Veriore',          tier: 2 },
+  { lat: 42.3650, lon: 20.4150, type: '4G', city: 'Gjakovë',    name: 'Perëndimore',      tier: 3 },
+
+  // ── Rahovec ────────────────────────────────────────────────────────────────
+  { lat: 42.3979, lon: 20.6543, type: '4G', city: 'Rahovec',    name: 'Qendra',           tier: 2 },
+
+  // ── Malishevë ──────────────────────────────────────────────────────────────
+  { lat: 42.4828, lon: 20.7447, type: '4G', city: 'Malishevë',  name: 'Qendra',           tier: 2 },
+
+  // ── Suharekë ───────────────────────────────────────────────────────────────
+  { lat: 42.3589, lon: 20.8255, type: '4G', city: 'Suharekë',   name: 'Qendra',           tier: 2 },
+
+  // ── Prizren ────────────────────────────────────────────────────────────────
+  { lat: 42.2139, lon: 20.7397, type: '5G', city: 'Prizren',    name: 'Qendra',           tier: 1 },
+  { lat: 42.2050, lon: 20.7500, type: '4G', city: 'Prizren',    name: 'Jugore',           tier: 2 },
+  { lat: 42.2250, lon: 20.7300, type: '4G', city: 'Prizren',    name: 'Veriore',          tier: 2 },
+  { lat: 42.2300, lon: 20.7600, type: '5G', city: 'Prizren',    name: 'Lindje',           tier: 3 },
+
+  // ── Gjilan ─────────────────────────────────────────────────────────────────
+  { lat: 42.4633, lon: 21.4692, type: '5G', city: 'Gjilan',     name: 'Qendra',           tier: 1 },
+  { lat: 42.4500, lon: 21.4800, type: '4G', city: 'Gjilan',     name: 'Jugore',           tier: 2 },
+  { lat: 42.4750, lon: 21.4600, type: '4G', city: 'Gjilan',     name: 'Veriore',          tier: 2 },
+  { lat: 42.4700, lon: 21.4950, type: '5G', city: 'Gjilan',     name: 'Lindje',           tier: 3 },
+
+  // ── Kamenicë ───────────────────────────────────────────────────────────────
+  { lat: 42.5786, lon: 21.5797, type: '4G', city: 'Kamenicë',   name: 'Qendra',           tier: 2 },
+
+  // ── Viti ───────────────────────────────────────────────────────────────────
+  { lat: 42.3225, lon: 21.3578, type: '4G', city: 'Viti',       name: 'Qendra',           tier: 2 },
+
+  // ── Ferizaj ────────────────────────────────────────────────────────────────
+  { lat: 42.3702, lon: 21.1553, type: '5G', city: 'Ferizaj',    name: 'Qendra',           tier: 1 },
+  { lat: 42.3600, lon: 21.1650, type: '4G', city: 'Ferizaj',    name: 'Jugore',           tier: 2 },
+  { lat: 42.3800, lon: 21.1450, type: '4G', city: 'Ferizaj',    name: 'Veriore',          tier: 2 },
+  { lat: 42.3900, lon: 21.1600, type: '5G', city: 'Ferizaj',    name: 'Industria',        tier: 3 },
+
+  // ── Shtërpcë ───────────────────────────────────────────────────────────────
+  { lat: 42.2389, lon: 21.0319, type: '4G', city: 'Shtërpcë',   name: 'Qendra',           tier: 2 },
+
+  // ── Korridori / rrugë nacionale ────────────────────────────────────────────
+  { lat: 42.7500, lon: 21.0200, type: '4G', city: 'Autostrada A1', name: 'Km 60',         tier: 2 },
+  { lat: 42.5800, lon: 21.0500, type: '4G', city: 'Autostrada A1', name: 'Km 45',         tier: 2 },
+  { lat: 42.4500, lon: 21.0800, type: '4G', city: 'Autostrada A1', name: 'Km 30',         tier: 2 },
+  { lat: 42.5500, lon: 20.9500, type: '4G', city: 'Rruga N9',      name: 'Segmenti',      tier: 3 },
+  { lat: 42.4200, lon: 20.9500, type: '4G', city: 'Rruga N25',     name: 'Segmenti',      tier: 3 },
+  { lat: 42.5300, lon: 21.3200, type: '4G', city: 'Rruga N52',     name: 'Segmenti',      tier: 3 },
+  { lat: 42.7000, lon: 20.5500, type: '4G', city: 'Rruga N9',      name: 'Pejë–Klinë',   tier: 3 },
+];
+
+function ZoomWatcher({ onZoom }) {
+  useMapEvents({ zoomend: (e) => onZoom(e.target.getZoom()) });
   return null;
 }
 
-// ─── Radio label ──────────────────────────────────────────────────────────────
-const RADIO_LABELS = { LTE: '4G LTE', NR: '5G NR', UMTS: '3G UMTS', GSM: '2G GSM' };
+export default function NetworkMap({ height = 420 }) {
+  const [zoom, setZoom] = useState(11);
 
-// ─── Main component ───────────────────────────────────────────────────────────
-export default function NetworkMap({
-  center      = [41.3275, 19.8189],
-  zoom        = 13,
-  radiusM     = 2000,
-  locationLabel = '41.33°N, 19.82°E — Tiranë, AL',
-  height      = 280,
-}) {
-  const [lat, lon] = center;
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey:  ['network-towers', lat, lon, radiusM],
-    queryFn:   () =>
-      api.get('/network/towers', { params: { lat, lon, radius: radiusM } }).then((r) => r.data),
-    staleTime: 1000 * 60 * 30,
-    retry: 1,
+  const visible = MARKERS.filter((m) => {
+    if (m.tier === 1) return true;
+    if (m.tier === 2) return zoom >= 9;
+    return zoom >= 11;
   });
 
-  const isDemo  = data?.demo ?? false;
-  const towers  = data?.cells ?? [];
+  const n5G = visible.filter((m) => m.type === '5G').length;
+  const n4G = visible.filter((m) => m.type === '4G').length;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Demo / error banner */}
-      {(isDemo || isError) && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-100">
-          <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-[11px] font-semibold text-amber-700">
-            {isError
-              ? 'Gabim në lidhje — po shfaqet mënyra Demo'
-              : 'Harta në modin Demo — Shërbimi Live kërkon API Key aktiv'}
-          </span>
-        </div>
-      )}
-
-      {/* Map */}
+    <div className="flex flex-col">
       <div style={{ height, position: 'relative', zIndex: 0 }}>
-        {isLoading ? (
-          <div className="w-full h-full flex items-center justify-center bg-[#f8f7fc]">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-6 h-6 border-2 border-[#7c5cdb] border-t-transparent rounded-full animate-spin" />
-              <span className="text-[11px] text-slate-400 font-medium">Duke ngarkuar hartën…</span>
-            </div>
-          </div>
-        ) : (
-          <MapContainer
-            center={center}
-            zoom={zoom}
-            style={{ width: '100%', height: '100%' }}
-            scrollWheelZoom={true}
-            zoomControl={true}
-          >
-            <MapCentre center={center} zoom={zoom} />
+        <MapContainer
+          center={[42.6629, 21.1655]}
+          zoom={11}
+          style={{ width: '100%', height: '100%' }}
+          scrollWheelZoom={true}
+          zoomControl={true}
+        >
+          <ZoomWatcher onZoom={setZoom} />
 
-            {/* OSM tile layer */}
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-            {/* Centre / HQ marker */}
-            <Marker position={center} icon={CENTER_ICON}>
+          {visible.map((m, i) => (
+            <Marker
+              key={i}
+              position={[m.lat, m.lon]}
+              icon={m.type === '5G' ? ICON_5G : ICON_4G}
+            >
               <Popup>
-                <div className="text-xs font-semibold">
-                  <p className="font-black text-[#7c5cdb] mb-0.5">📍 Qendra e monitorimit</p>
-                  <p className="text-slate-500">{locationLabel}</p>
+                <div className="text-xs space-y-0.5">
+                  <p className="font-black text-slate-800 text-[13px]">
+                    {m.type === '5G' ? '🟣' : '🟠'} {m.name}
+                  </p>
+                  <p className="text-slate-500">{m.city}</p>
+                  <p className="font-bold" style={{ color: m.type === '5G' ? '#7c5cdb' : '#f97316' }}>
+                    Rrjeti {m.type}
+                  </p>
                 </div>
               </Popup>
             </Marker>
-
-            {/* Coverage radius circle */}
-            <Circle
-              center={center}
-              radius={radiusM}
-              pathOptions={{ color: '#7c5cdb', fillColor: '#7c5cdb', fillOpacity: 0.04, weight: 1.5, dashArray: '6 4' }}
-            />
-
-            {/* Tower markers */}
-            {towers.map((tower, i) => {
-              const dist = distKm(lat, lon, tower.lat, tower.lon);
-              const isNR = tower.radio === 'NR';
-              return (
-                <Marker
-                  key={i}
-                  position={[tower.lat, tower.lon]}
-                  icon={makeTowerIcon(tower.radio)}
-                >
-                  <Popup>
-                    <div style={{ minWidth: 160 }} className="text-xs space-y-1">
-                      <p className="font-black text-slate-800 text-[13px]">
-                        {isNR ? '🟢 Kullë 5G NR' : '🔵 Kullë 4G LTE'}
-                      </p>
-                      <div className="space-y-0.5 text-slate-600">
-                        <p><span className="font-semibold">Teknologjia:</span> {RADIO_LABELS[tower.radio] ?? tower.radio}</p>
-                        <p><span className="font-semibold">MCC/MNC:</span> {tower.mcc}/{tower.mnc ?? '—'}</p>
-                        <p><span className="font-semibold">Distanca:</span> {dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(2)}km`}</p>
-                        {tower.range && (
-                          <p><span className="font-semibold">Rreze:</span> {tower.range}m</p>
-                        )}
-                        {tower.samples && (
-                          <p><span className="font-semibold">Kampione:</span> {tower.samples}</p>
-                        )}
-                        {isDemo && (
-                          <p className="text-amber-600 font-semibold mt-1">⚠ Të dhëna demo</p>
-                        )}
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
-        )}
+          ))}
+        </MapContainer>
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-[#f8f7fc] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="text-[11px] text-slate-400 font-medium">{locationLabel}</span>
-        </div>
+      {/* Footer legend */}
+      <div className="px-4 py-2.5 border-t border-[#f8f7fc] flex items-center justify-between">
+        <span className="text-[11px] text-slate-400 font-medium">
+          Kosovë · {visible.length} stacione
+        </span>
         <div className="flex items-center gap-3">
-          {/* Legend */}
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
-            <span className="text-[10px] text-slate-400">4G</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#f97316]" />
+            <span className="text-[10px] text-slate-500 font-semibold">4G ({n4G})</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-[#7c5cdb]" />
-            <span className="text-[10px] text-slate-400">5G</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#7c5cdb]" />
+            <span className="text-[10px] text-slate-500 font-semibold">5G ({n5G})</span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">{towers.length} kulla</span>
         </div>
       </div>
     </div>

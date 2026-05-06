@@ -9,30 +9,42 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const METODAT = ['kesh', 'banke', 'transfere', 'kartele', 'online', 'tjeter'];
+const METODAT = ['cash', 'online', 'transfer'];
 const METODAT_LABELS = {
-  kesh:      'Kesh',
-  banke:     'Bankë',
-  transfere: 'Transferë',
-  kartele:   'Kartelë',
-  online:    'Online',
-  tjeter:    'Tjetër',
+  cash:     'Kesh',
+  online:   'Online',
+  transfer: 'Transfer',
 };
 
+// SVG icon components per method
 const METODA_ICONS = {
-  kesh:      '💵',
-  banke:     '🏦',
-  transfere: '↔️',
-  kartele:   '💳',
-  online:    '🌐',
-  tjeter:    '•',
+  cash: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M6 12h.01M18 12h.01" />
+    </svg>
+  ),
+  online: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4M14 15h4" strokeWidth={2} />
+    </svg>
+  ),
+  transfer: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <path d="M7 16V4m0 0L3 8m4-4l4 4" />
+      <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
+    </svg>
+  ),
 };
 
 const EMPTY_FORM = {
   fature_id:    '',
   shuma:        '',
   data_pageses: new Date().toISOString().substring(0, 10),
-  metoda:       'kesh',
+  metoda:       'cash',
   referenca:    '',
   shenime:      '',
 };
@@ -60,7 +72,7 @@ function PageseForm({ initialData, onSubmit, onCancel, loading }) {
         fature_id:    initialData.fature_id    ?? '',
         shuma:        initialData.shuma        ?? '',
         data_pageses: initialData.data_pageses ? String(initialData.data_pageses).substring(0, 10) : new Date().toISOString().substring(0, 10),
-        metoda:       initialData.metoda       ?? 'kesh',
+        metoda:       initialData.metoda       ?? 'cash',
         referenca:    initialData.referenca    ?? '',
         shenime:      initialData.shenime      ?? '',
       });
@@ -188,22 +200,30 @@ function PageseForm({ initialData, onSubmit, onCancel, loading }) {
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
           Metoda e Pagesës <span className="text-red-500">*</span>
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {METODAT.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setForm((p) => ({ ...p, metoda: m }))}
-              className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border-2 text-xs font-bold transition-all ${
-                form.metoda === m
-                  ? 'border-violet-500 bg-violet-50 text-violet-700'
-                  : 'border-slate-200 text-slate-500 hover:border-slate-300'
-              }`}
-            >
-              <span className="text-base">{METODA_ICONS[m]}</span>
-              {METODAT_LABELS[m]}
-            </button>
-          ))}
+        <div className="grid grid-cols-3 gap-3">
+          {METODAT.map((m) => {
+            const active = form.metoda === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, metoda: m }))}
+                className={`relative flex flex-col items-center gap-2.5 py-5 px-3 rounded-2xl border-2 font-bold transition-all duration-150 ${
+                  active
+                    ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm shadow-violet-100'
+                    : 'border-slate-200 bg-white text-slate-400 hover:border-violet-300 hover:text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {active && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-violet-500" />
+                )}
+                <span className={active ? 'text-violet-600' : 'text-slate-400'}>
+                  {METODA_ICONS[m]}
+                </span>
+                <span className="text-[11px] tracking-wide">{METODAT_LABELS[m]}</span>
+              </button>
+            );
+          })}
         </div>
         <FE field="metoda" />
       </div>
@@ -372,7 +392,7 @@ export default function PagesatPage() {
     },
   });
 
-  const setFilter  = (k, v) => setFilters((p) => ({ ...p, [k]: v, page: 1 }));
+  const setFilter  = (k, v) => setFilters((p) => ({ ...p, [k]: v, ...(k !== 'page' && { page: 1 }) }));
   const openCreate = () => { setEditTarget(null); setFormOpen(true); };
   const openEdit   = (p) => { setEditTarget(p);   setFormOpen(true); };
   const closeForm  = ()  => { setFormOpen(false); setEditTarget(null); };
@@ -392,7 +412,7 @@ export default function PagesatPage() {
   const byMetoda   = METODAT.reduce((acc, m) => {
     acc[m] = items.filter((p) => p.metoda === m).reduce((s, p) => s + Number(p.shuma), 0);
     return acc;
-  }, {});
+  }, { cash: 0, online: 0, transfer: 0 });
 
   return (
     <div>
@@ -416,10 +436,10 @@ export default function PagesatPage() {
       {/* Summary */}
       {items.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <SumCard label="Totali i faqes"  value={`${totalShuma.toFixed(2)}€`} color="green"  />
-          <SumCard label="Pagesat"          value={items.length}                 color="slate"  />
-          <SumCard label="Kesh"             value={`${byMetoda.kesh.toFixed(2)}€`} color="slate" />
-          <SumCard label="Banke / Online"   value={`${(byMetoda.banke + byMetoda.online + byMetoda.transfere + byMetoda.kartele).toFixed(2)}€`} color="violet" />
+          <SumCard label="Totali i faqes" value={`${totalShuma.toFixed(2)}€`}          color="green"  />
+          <SumCard label="Kesh"           value={`${byMetoda.cash.toFixed(2)}€`}        color="slate"  />
+          <SumCard label="Online"         value={`${byMetoda.online.toFixed(2)}€`}      color="violet" />
+          <SumCard label="Transfer"       value={`${byMetoda.transfer.toFixed(2)}€`}    color="slate"  />
         </div>
       )}
 
@@ -489,8 +509,13 @@ export default function PagesatPage() {
                       </td>
                       {/* Metoda */}
                       <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
-                          <span>{METODA_ICONS[p.metoda]}</span>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ${
+                          p.metoda === 'online'
+                            ? 'bg-violet-50 text-violet-700'
+                            : p.metoda === 'transfer'
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'bg-slate-100 text-slate-700'
+                        }`}>
                           {METODAT_LABELS[p.metoda] ?? p.metoda}
                         </span>
                       </td>

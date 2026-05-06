@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import AppRouter from './router/index.jsx';
 import { useAuthStore } from './store/authStore.js';
 import { authApi } from './api/authApi.js';
+import AIChatWidget from './components/ui/AIChatWidget.jsx';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,12 @@ const queryClient = new QueryClient({
  *     - If ok: save new token to localStorage + hydrate user.
  *     - If fails: clearAuth → /login.
  */
+function ChatWidgetGate() {
+  const { isAuthenticated, isInitialized } = useAuthStore();
+  if (!isInitialized || !isAuthenticated) return null;
+  return <AIChatWidget />;
+}
+
 function AuthInitializer({ children }) {
   const { setAuth, clearAuth, setInitialized } = useAuthStore();
 
@@ -77,6 +84,7 @@ export default function App() {
       <BrowserRouter>
         <AuthInitializer>
           <AppRouter />
+          <ChatWidgetGate />
         </AuthInitializer>
         <Toaster
           position="top-right"

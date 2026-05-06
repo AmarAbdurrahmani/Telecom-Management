@@ -197,7 +197,7 @@ export default function AnkesatPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ankesat'] }); toast.success('Ankesa u fshi.'); setDelete(null); },
   });
 
-  const setFilter = (key, val) => setFilters((p) => ({ ...p, [key]: val, page: 1 }));
+  const setFilter = (key, val) => setFilters((p) => ({ ...p, [key]: val, ...(key !== 'page' && { page: 1 }) }));
 
   const openEdit = (a) => { setEditing(a); setViewing(null); setFormOpen(true); };
   const openCreate = () => { setEditing(null); setFormOpen(true); };

@@ -71,21 +71,29 @@ export default function AppRouter() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard"           element={<DashboardPage />} />
-        <Route path="klientet"            element={<KlientetPage />} />
-        <Route path="klientet/:id"        element={<KlientDetajet />} />
-        <Route path="paketat"             element={<PaketaPage />} />
-        <Route path="kontratat"           element={<KontratatPage />} />
-        <Route path="faturat"             element={<FaturatPage />} />
-        <Route path="numrat-telefonit"    element={<NumratPage />} />
-        <Route path="sherbimet-shtesa"    element={<SherbimetPage />} />
-        <Route path="users"               element={<UsersPage />} />
-        <Route path="ankesat"             element={<AnkesatPage />} />
-        <Route path="infrastruktura"      element={<InfrastrukturaPage />} />
-        <Route path="pagesat"             element={<PagesatPage />} />
-        <Route path="pajisjet"            element={<PajisjetPage />} />
-        <Route path="lifecycle"           element={<LifecyclePage />} />
-        <Route path="chat"                element={<ChatPage />} />
+
+        {/* All staff */}
+        <Route path="dashboard"    element={<DashboardPage />} />
+        <Route path="klientet"     element={<KlientetPage />} />
+        <Route path="klientet/:id" element={<KlientDetajet />} />
+        <Route path="pagesat"      element={<PagesatPage />} />
+        <Route path="ankesat"      element={<AnkesatPage />} />
+        <Route path="chat"         element={<ChatPage />} />
+
+        {/* admin · tl · sv */}
+        <Route path="kontratat"  element={<ProtectedRoute allowedRoles={['admin','tl','sv']}><KontratatPage /></ProtectedRoute>} />
+        <Route path="lifecycle"  element={<ProtectedRoute allowedRoles={['admin','tl','sv']}><LifecyclePage /></ProtectedRoute>} />
+        <Route path="faturat"    element={<ProtectedRoute allowedRoles={['admin','tl','sv']}><FaturatPage /></ProtectedRoute>} />
+
+        {/* admin · tl */}
+        <Route path="paketat"          element={<ProtectedRoute allowedRoles={['admin','tl']}><PaketaPage /></ProtectedRoute>} />
+        <Route path="pajisjet"         element={<ProtectedRoute allowedRoles={['admin','tl']}><PajisjetPage /></ProtectedRoute>} />
+        <Route path="numrat-telefonit" element={<ProtectedRoute allowedRoles={['admin','tl']}><NumratPage /></ProtectedRoute>} />
+        <Route path="sherbimet-shtesa" element={<ProtectedRoute allowedRoles={['admin','tl']}><SherbimetPage /></ProtectedRoute>} />
+        <Route path="infrastruktura"   element={<ProtectedRoute allowedRoles={['admin','tl']}><InfrastrukturaPage /></ProtectedRoute>} />
+
+        {/* admin only */}
+        <Route path="users" element={<ProtectedRoute allowedRoles={['admin']}><UsersPage /></ProtectedRoute>} />
       </Route>
 
       {/* ── Klient portal ── */}
